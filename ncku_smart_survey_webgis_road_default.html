@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>成功大學智慧測量校園平台</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Microsoft JhengHei", Arial, sans-serif; background: #eef2f6; color: #17212b; }
+    .app { display: grid; grid-template-columns: 360px 1fr; height: 100vh; }
+    .sidebar { background: linear-gradient(180deg,#14213d,#243b63); color: #fff; padding: 22px; overflow-y: auto; box-shadow: 6px 0 18px rgba(0,0,0,.2); z-index: 1000; }
+    .brand { margin-bottom: 18px; }
+    .brand .tag { display: inline-block; background: rgba(255,255,255,.14); padding: 5px 10px; border-radius: 999px; font-size: 12px; margin-bottom: 10px; }
+    .brand h1 { margin: 0; font-size: 24px; line-height: 1.35; }
+    .brand p { margin: 8px 0 0; color: #d5deee; font-size: 13px; line-height: 1.7; }
+    .panel { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 14px; margin: 14px 0; backdrop-filter: blur(8px); }
+    .panel h2 { margin: 0 0 12px; font-size: 16px; }
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    button { border: 0; border-radius: 12px; padding: 11px 10px; cursor: pointer; font-family: inherit; font-weight: 700; }
+    .mode-btn { background: #f8fafc; color: #1d3557; text-align: left; transition: .15s; }
+    .mode-btn:hover, .mode-btn.active { background: #ffd166; color: #1a1a1a; transform: translateY(-1px); }
+    .layer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,.12); font-size: 14px; }
+    .layer:last-child { border-bottom: 0; }
+    .switch { transform: scale(1.1); }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat { background: rgba(255,255,255,.92); color: #17212b; border-radius: 14px; padding: 12px; }
+    .stat b { display: block; font-size: 24px; color: #1d3557; }
+    .stat span { font-size: 12px; color: #52616f; }
+    .legend { background: rgba(255,255,255,.92); color: #17212b; border-radius: 14px; padding: 12px; line-height: 1.8; font-size: 13px; }
+    .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    .green { background:#2a9d8f; } .yellow { background:#f4a261; } .red { background:#e63946; } .blue { background:#457b9d; } .orange { background:#ff8c42; } .purple { background:#6c63ff; } .arcgis-building { background:#5b9f7a; }
+    .bike-icon { background:#ff8c42; color:#fff; border:2px solid #fff; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,.35); font-size:16px; }
+    .road-label { background:rgba(255,255,255,.86); color:#1f3a63; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,.12); }
+    .bus-icon { background:#6c63ff; color:#fff; border:2px solid #fff; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,.35); font-size:15px; }
+    .bike-list, .bus-list { max-height: 190px; overflow:auto; background:rgba(255,255,255,.92); color:#17212b; border-radius:12px; padding:10px; font-size:12px; line-height:1.7; }
+    .bike-row, .bus-row { display:flex; justify-content:space-between; gap:8px; border-bottom:1px solid #dde3ea; padding:5px 0; }
+    .bike-row:last-child { border-bottom:0; }
+    .action { width: 100%; background: #2a9d8f; color: #fff; margin-top: 8px; }
+    .action.secondary { background: #457b9d; }
+    #map { width: 100%; height: 100vh; background:#f7f8fa; }
+    .topbar { position: absolute; top: 16px; left: 382px; right: 18px; z-index: 999; display: flex; gap: 10px; align-items: center; pointer-events: none; }
+    .search { pointer-events: auto; flex: 1; max-width: 460px; background: #fff; border-radius: 14px; box-shadow: 0 8px 22px rgba(0,0,0,.18); padding: 12px 16px; color: #4c5662; }
+    .pill { pointer-events: auto; background: #fff; border-radius: 999px; padding: 10px 14px; box-shadow: 0 8px 22px rgba(0,0,0,.18); font-weight: 700; color: #1d3557; font-size: 13px; }
+    .leaflet-popup-content { font-family: "Microsoft JhengHei", Arial, sans-serif; line-height: 1.6; }
+    .popup-title { font-weight: 800; font-size: 15px; color: #14213d; }
+    .form { display: grid; gap: 8px; }
+    .form input, .form select, .form textarea { width: 100%; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.9); border-radius: 10px; padding: 9px; font-family: inherit; }
+    @media (max-width: 860px) { .app { grid-template-columns: 1fr; grid-template-rows: 46vh 54vh; } .sidebar { height: 46vh; } #map { height: 54vh; } .topbar { left: 14px; top: calc(46vh + 12px); right: 14px; } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="tag">NCKU Surveying Smart Campus Platform</div>
+      <h1>成功大學智慧測量校園平台</h1>
+      <p>以校園電子地圖為基礎，整合 GNSS 遮蔽率、3D 建物、安全設施、求救路徑與設施回報功能。</p>
+    </div>
+
+    <div class="panel">
+      <h2>功能模式</h2>
+      <div class="mode-grid">
+        <button class="mode-btn active" onclick="setMode('campus', this)">🏫 校園導覽</button>
+        <button class="mode-btn" onclick="setMode('gnss', this)">📡 GNSS分析</button>
+        <button class="mode-btn" onclick="setMode('safety', this)">🛡️ 校園安全</button>
+        <button class="mode-btn" onclick="setMode('facility', this)">🪑 設施調查</button>
+        <button class="mode-btn" onclick="setMode('bike', this)">🚲 YouBike</button>
+        <button class="mode-btn" onclick="setMode('bus', this)">🚌 公車資訊</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>圖層控制</h2>
+      <label class="layer">示範建物模型 <input class="switch" type="checkbox" onchange="toggle(buildings)"></label>
+      <label class="layer">ArcGIS 光復測區建物 <input class="switch" type="checkbox" checked onchange="toggle(arcgisBuildings)"></label>
+      <label class="layer">人行道路網 <input class="switch" type="checkbox" checked onchange="toggle(roads)"></label>
+      <label class="layer">GNSS遮蔽率 <input class="switch" type="checkbox" onchange="toggle(gnssHeat)"></label>
+      <label class="layer">安全設施 <input class="switch" type="checkbox" onchange="toggle(safety)"></label>
+      <label class="layer">校園設施 <input class="switch" type="checkbox" onchange="toggle(facilities)"></label>
+      <label class="layer">YouBike 即時站點 <input class="switch" type="checkbox" onchange="toggle(youbikeLayer)"></label>
+      <label class="layer">公車站牌與到站 <input class="switch" type="checkbox" onchange="toggle(busLayer)"></label>
+      <label class="layer">求救路徑 <input class="switch" type="checkbox" onchange="toggle(emergencyRoute)"></label>
+    </div>
+
+    <div class="panel">
+      <h2>GNSS 品質摘要</h2>
+      <div class="stats">
+        <div class="stat"><b>26%</b><span>平均遮蔽率</span></div>
+        <div class="stat"><b>18</b><span>平均可見衛星數</span></div>
+        <div class="stat"><b>3</b><span>推薦觀測點</span></div>
+        <div class="stat"><b>1.8</b><span>平均 PDOP</span></div>
+      </div>
+      <button class="action" onclick="showBestGNSS()">找最佳 GNSS 觀測點</button>
+    </div>
+
+
+
+    <div class="panel">
+      <h2>YouBike 即時摘要</h2>
+      <div class="stats">
+        <div class="stat"><b id="bikeStationCount">30</b><span>成大周邊站點</span></div>
+        <div class="stat"><b id="bikeRentTotal">--</b><span>可借車總數</span></div>
+        <div class="stat"><b id="bikeReturnTotal">--</b><span>可還空位總數</span></div>
+        <div class="stat"><b id="bikeElectricTotal">--</b><span>電輔車總數</span></div>
+      </div>
+      <button class="action secondary" onclick="focusBestBikeStation()">找最多可借車站點</button>
+      <div class="bike-list" id="bikeList" style="margin-top:10px;"></div>
+    </div>
+
+
+    <div class="panel">
+      <h2>公車到站摘要</h2>
+      <div class="stats">
+        <div class="stat"><b id="busStopCount">--</b><span>成大周邊站牌</span></div>
+        <div class="stat"><b id="busRouteCount">--</b><span>經過路線數</span></div>
+        <div class="stat"><b id="busSoonCount">--</b><span>30分鐘內到站</span></div>
+        <div class="stat"><b id="busDataTime">--</b><span>資料筆數</span></div>
+      </div>
+      <button class="action secondary" onclick="focusSoonBusStop()">找最近到站公車</button>
+      <div class="bus-list" id="busList" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>圖例</h2>
+      <div class="legend">
+        <div><span class="dot green"></span>GNSS 優良：遮蔽率低</div>
+        <div><span class="dot yellow"></span>GNSS 普通：建物或樹木部分遮蔽</div>
+        <div><span class="dot red"></span>GNSS 較差：高遮蔽區</div>
+        <div><span class="dot blue"></span>示範建物：依學院或用途分類</div>
+        <div><span class="dot arcgis-building"></span>ArcGIS 光復測區建物圖層</div>
+        <div><span class="dot orange"></span>YouBike：TDX 成大周邊站點</div>
+        <div><span class="dot purple"></span>公車：TDX 站牌與預估到站</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>設施回報</h2>
+      <div class="form">
+        <select><option>飲水機故障</option><option>路燈不亮</option><option>垃圾桶滿溢</option><option>桌椅損壞</option><option>新增設施點位</option></select>
+        <textarea rows="3" placeholder="輸入問題描述，例如：系館旁路燈夜間不亮"></textarea>
+        <button class="action secondary" onclick="alert('示範版：正式系統可串接 Survey123 或 ArcGIS Online 表單')">送出回報</button>
+      </div>
+    </div>
+  </aside>
+
+  <main style="position:relative;">
+    <div class="topbar">
+      <div class="search">預設顯示：校園路網＋ArcGIS 建物；可切換淡化底圖與各功能圖層</div>
+      <div class="pill" id="modeText">目前模式：校園導覽</div>
+    </div>
+    <div id="map"></div>
+  </main>
+</div>
+
+<script>
+  const map = L.map('map', { zoomControl: false }).setView([22.9973, 120.2196], 16);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  L.control.scale({ metric: true, imperial: false }).addTo(map);
+
+  // 底圖設定：預設使用「純路網底圖」，也就是不載入外部底圖，讓校園路網與自建圖層成為主視覺。
+  const blankBase = L.layerGroup().addTo(map);
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    opacity: 0.18
+  });
+  const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenTopoMap',
+    opacity: 0.18
+  });
+  L.control.layers({
+    '純路網底圖（預設）': blankBase,
+    '淡化一般底圖': osm,
+    '淡化地形底圖': topo
+  }, {}, { position: 'bottomright' }).addTo(map);
+
+  // 預設只開啟：ArcGIS 建物 + 人行道路網。其他圖層由左側開關或功能模式啟用。
+  const buildings = L.layerGroup();
+  const arcgisBuildings = L.layerGroup().addTo(map);
+  const roads = L.layerGroup().addTo(map);
+  const gnssHeat = L.layerGroup();
+  const safety = L.layerGroup();
+  const facilities = L.layerGroup();
+  const emergencyRoute = L.layerGroup();
+  const youbikeLayer = L.layerGroup();
+  const busLayer = L.layerGroup();
+  const bestGNSS = L.layerGroup();
+
+  function popup(title, html){ return `<div class="popup-title">${title}</div>${html}`; }
+
+  // ArcGIS Online Hosted Feature Layer：光復測區建物
+  // 若圖層無法顯示，請確認 ArcGIS Online 項目已設為公開分享，或將 URL 的圖層編號需使用實際圖層編號。本服務圖層編號為 /3。
+  const arcgisBuildingUrl = "https://services5.arcgis.com/yqmzFsAzBUNEIWLw/arcgis/rest/services/%E5%85%89%E5%BE%A9%E6%B8%AC%E5%8D%80%E5%BB%BA%E7%89%A9/FeatureServer/3";
+  const arcgisBuildingLayer = L.esri.featureLayer({
+    url: arcgisBuildingUrl,
+    simplifyFactor: 0.35,
+    precision: 6,
+    style: function(feature) {
+      return {
+        color: '#3e457f',
+        weight: 1.2,
+        fillColor: '#5b9f7a',
+        fillOpacity: 0.14
+      };
+    },
+    onEachFeature: function(feature, layer) {
+      const p = feature.properties || {};
+      const title = p.Name || p.name || p.名稱 || p.建物名稱 || p.OBJECTID || '光復測區建物';
+      const fields = Object.keys(p).slice(0, 8).map(k => `${k}：${p[k]}`).join('<br>');
+      layer.bindPopup(popup('🏢 ' + title, `${fields}<br>資料來源：ArcGIS Online Feature Layer`));
+    }
+  }).addTo(arcgisBuildings);
+
+  arcgisBuildingLayer.on('load', function() {
+    try {
+      const b = arcgisBuildingLayer.getBounds();
+      if (b && b.isValid()) map.fitBounds(b, { padding: [40, 40], maxZoom: 17 });
+    } catch(e) {}
+  });
+
+
+  const buildingData = [
+    {name:'工學院建物', color:'#457b9d', coords:[[22.9979,120.2188],[22.99835,120.2188],[22.99835,120.21945],[22.9979,120.21945]], floor:5, gnss:'周邊遮蔽率 42%'},
+    {name:'管理學院建物', color:'#2a9d8f', coords:[[22.99655,120.22005],[22.99705,120.22005],[22.99705,120.22072],[22.99655,120.22072]], floor:4, gnss:'周邊遮蔽率 35%'},
+    {name:'文學院建物', color:'#f4a261', coords:[[22.99735,120.22085],[22.99778,120.22085],[22.99778,120.22138],[22.99735,120.22138]], floor:3, gnss:'周邊遮蔽率 58%'}
+  ];
+  buildingData.forEach(b => L.polygon(b.coords,{color:b.color, fillColor:b.color, fillOpacity:.52, weight:2})
+    .bindPopup(popup(b.name, `樓層數：${b.floor} 層<br>3D模型：依樓層數拉伸<br>${b.gnss}`)).addTo(buildings));
+
+  [
+    [[22.9961,120.2184],[22.9971,120.2196],[22.9982,120.2206]],
+    [[22.9980,120.2183],[22.9971,120.2196],[22.9964,120.2211]],
+    [[22.9967,120.2191],[22.99755,120.2202],[22.9977,120.2212]]
+  ].forEach(r => {
+    // 白色外框 + 深藍主線，讓無底圖狀態下的路網更清楚。
+    L.polyline(r,{color:'#ffffff',weight:11,opacity:.9}).addTo(roads);
+    L.polyline(r,{color:'#1f3a63',weight:6,opacity:.96}).bindPopup('人行道路網').addTo(roads);
+  });
+  L.marker([22.9971,120.2196], {
+    icon: L.divIcon({ className:'', html:'<div class="road-label">校園人行道路網</div>', iconSize:[120,24], iconAnchor:[60,12] })
+  }).addTo(roads);
+
+  const heat = [
+    [22.9966,120.2187,110,'#2a9d8f','遮蔽率 12%｜可見衛星 24｜PDOP 1.2'],
+    [22.9973,120.2197,130,'#f4a261','遮蔽率 38%｜可見衛星 17｜PDOP 2.1'],
+    [22.99805,120.2192,120,'#e63946','遮蔽率 71%｜可見衛星 9｜PDOP 4.0'],
+    [22.99755,120.2210,125,'#e63946','遮蔽率 64%｜可見衛星 10｜PDOP 3.6'],
+    [22.9963,120.2205,105,'#2a9d8f','遮蔽率 18%｜可見衛星 22｜PDOP 1.5']
+  ];
+  heat.forEach(h => L.circle([h[0],h[1]],{radius:h[2],color:h[3],fillColor:h[3],fillOpacity:.28,weight:1})
+    .bindPopup(popup('GNSS遮蔽率分析', h[4] + '<br>資料來源：建物角點與衛星方位仰角分析')).addTo(gnssHeat));
+
+  const safetyPts = [
+    ['AED',22.99715,120.21875,'急救設備'], ['SOS緊急求救亭',22.9980,120.2203,'緊急通報'], ['警衛室',22.99635,120.21885,'求救路徑終點'], ['監視器',22.9977,120.2206,'安全監控']
+  ];
+  safetyPts.forEach(p => L.circleMarker([p[1],p[2]],{radius:9,color:'#e63946',fillColor:'#e63946',fillOpacity:.9})
+    .bindPopup(popup(p[0], `類型：${p[3]}<br>可納入校園安全圖層`)).addTo(safety));
+
+  const facilityPts = [
+    ['飲水機',22.99688,120.22018,'正常'], ['垃圾桶',22.99730,120.21927,'正常'], ['室外桌椅',22.99762,120.22005,'部分毀損'], ['郵筒',22.99670,120.21900,'正常'], ['路燈',22.99788,120.21988,'夜間待檢查']
+  ];
+  facilityPts.forEach(p => L.marker([p[1],p[2]]).bindPopup(popup(p[0], `設施狀態：${p[3]}<br>可由 Survey123 回報更新`)).addTo(facilities));
+
+  L.polyline([[22.9980,120.2203],[22.9971,120.2196],[22.99635,120.21885]], {color:'#e63946', weight:6, dashArray:'10,8'})
+    .bindPopup(popup('建議求救路徑','SOS → 主要人行道 → 警衛室')).addTo(emergencyRoute);
+
+  function toggle(layer){ map.hasLayer(layer) ? map.removeLayer(layer) : map.addLayer(layer); }
+
+
+  const youbikeData = [
+    {
+        "uid": "TNN501305041",
+        "name": "臺南車站(前站三)",
+        "lat": 22.99679,
+        "lon": 120.21186,
+        "address": "北門路一段179號",
+        "capacity": 28,
+        "rent": 6,
+        "return": 20,
+        "general": 2,
+        "electric": 4,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309005",
+        "name": "臺南二中",
+        "lat": 23.00397,
+        "lon": 120.21322,
+        "address": "公園北路3號(東北側)",
+        "capacity": 81,
+        "rent": 11,
+        "return": 70,
+        "general": 9,
+        "electric": 2,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309006",
+        "name": "成大醫院(小東路)",
+        "lat": 23.00108,
+        "lon": 120.21824,
+        "address": "小東路35號前",
+        "capacity": 30,
+        "rent": 3,
+        "return": 26,
+        "general": 2,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309011",
+        "name": "成大醫院(東豐路)",
+        "lat": 23.00328,
+        "lon": 120.21734,
+        "address": "東豐路166號前",
+        "capacity": 19,
+        "rent": 7,
+        "return": 12,
+        "general": 4,
+        "electric": 3,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309021",
+        "name": "勝安香草運動公園",
+        "lat": 23.00594,
+        "lon": 120.21618,
+        "address": "開元路/前鋒路口",
+        "capacity": 20,
+        "rent": 8,
+        "return": 12,
+        "general": 6,
+        "electric": 2,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309025",
+        "name": "小東公園",
+        "lat": 23.00064,
+        "lon": 120.22511,
+        "address": "小東路57號東側",
+        "capacity": 20,
+        "rent": 4,
+        "return": 16,
+        "general": 4,
+        "electric": 0,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309034",
+        "name": "臺南車站(前站二)",
+        "lat": 22.99772,
+        "lon": 120.21193,
+        "address": "北門路二段3號旁",
+        "capacity": 46,
+        "rent": 19,
+        "return": 27,
+        "general": 13,
+        "electric": 6,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309039",
+        "name": "東豐長榮",
+        "lat": 23.00239,
+        "lon": 120.22315,
+        "address": "東豐路295號南側",
+        "capacity": 23,
+        "rent": 12,
+        "return": 11,
+        "general": 11,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309041",
+        "name": "臺南市桌球館",
+        "lat": 23.00185,
+        "lon": 120.22652,
+        "address": "東豐路458號",
+        "capacity": 20,
+        "rent": 6,
+        "return": 14,
+        "general": 6,
+        "electric": 0,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309043",
+        "name": "成大醫院成杏校區(東豐路)",
+        "lat": 23.0028,
+        "lon": 120.22037,
+        "address": "東豐路221號南側",
+        "capacity": 21,
+        "rent": 5,
+        "return": 16,
+        "general": 4,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309058",
+        "name": "台南公園(公園南路)",
+        "lat": 23.00013,
+        "lon": 120.21234,
+        "address": "北門路二段與公園南路交叉口",
+        "capacity": 60,
+        "rent": 17,
+        "return": 43,
+        "general": 15,
+        "electric": 2,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309067",
+        "name": "重興綠園",
+        "lat": 23.00337,
+        "lon": 120.22658,
+        "address": "東豐路451巷169號(南側)",
+        "capacity": 22,
+        "rent": 16,
+        "return": 6,
+        "general": 15,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321003",
+        "name": "成大公園",
+        "lat": 22.99653,
+        "lon": 120.21491,
+        "address": "育樂街88號旁",
+        "capacity": 68,
+        "rent": 52,
+        "return": 10,
+        "general": 45,
+        "electric": 7,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321004",
+        "name": "勝利大學路口",
+        "lat": 22.99614,
+        "lon": 120.21822,
+        "address": "勝利路/大學路口(東南側)",
+        "capacity": 30,
+        "rent": 19,
+        "return": 11,
+        "general": 12,
+        "electric": 7,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321005",
+        "name": "馬雅各青年公園",
+        "lat": 22.99139,
+        "lon": 120.21502,
+        "address": "青年路360號(對側人行道)",
+        "capacity": 30,
+        "rent": 5,
+        "return": 25,
+        "general": 4,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321006",
+        "name": "東寧運動公園",
+        "lat": 22.99114,
+        "lon": 120.22462,
+        "address": "東寧路220號北側",
+        "capacity": 54,
+        "rent": 29,
+        "return": 25,
+        "general": 13,
+        "electric": 16,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321017",
+        "name": "大學路停車場",
+        "lat": 22.99657,
+        "lon": 120.2158,
+        "address": "大學路西段/育樂街66巷口",
+        "capacity": 19,
+        "rent": 16,
+        "return": 3,
+        "general": 12,
+        "electric": 4,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321018",
+        "name": "臺南一中",
+        "lat": 22.99271,
+        "lon": 120.21789,
+        "address": "勝利路/東寧路口(東北側)",
+        "capacity": 66,
+        "rent": 19,
+        "return": 47,
+        "general": 18,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321023",
+        "name": "東興公園(東安路251巷)",
+        "lat": 22.99684,
+        "lon": 120.22565,
+        "address": "東安路251巷60號(對側人行道)",
+        "capacity": 20,
+        "rent": 3,
+        "return": 17,
+        "general": 1,
+        "electric": 2,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321024",
+        "name": "東興公園(林森路)",
+        "lat": 22.99765,
+        "lon": 120.22444,
+        "address": "林森路二段/東和路口(東南側)",
+        "capacity": 20,
+        "rent": 7,
+        "return": 13,
+        "general": 7,
+        "electric": 0,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321025",
+        "name": "臺南車站(前站一)",
+        "lat": 22.99797,
+        "lon": 120.21238,
+        "address": "北門路二段12號旁",
+        "capacity": 33,
+        "rent": 20,
+        "return": 13,
+        "general": 14,
+        "electric": 6,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321035",
+        "name": "小東前鋒",
+        "lat": 23.00113,
+        "lon": 120.21495,
+        "address": "小東路15號南側",
+        "capacity": 30,
+        "rent": 17,
+        "return": 13,
+        "general": 7,
+        "electric": 10,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321036",
+        "name": "城垣小東門段殘蹟",
+        "lat": 22.99954,
+        "lon": 120.21851,
+        "address": "勝利路(城垣小東門段殘蹟)",
+        "capacity": 23,
+        "rent": 7,
+        "return": 16,
+        "general": 1,
+        "electric": 6,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321037",
+        "name": "長榮小東",
+        "lat": 23.00022,
+        "lon": 120.22232,
+        "address": "長榮路三段/小東路口(東南側)",
+        "capacity": 30,
+        "rent": 3,
+        "return": 27,
+        "general": 0,
+        "electric": 3,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321038",
+        "name": "大學長榮",
+        "lat": 22.99602,
+        "lon": 120.22216,
+        "address": "長榮路三段139號東北側",
+        "capacity": 50,
+        "rent": 14,
+        "return": 36,
+        "general": 13,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321039",
+        "name": "林森大學",
+        "lat": 22.99566,
+        "lon": 120.22389,
+        "address": "林森路二段260號東側",
+        "capacity": 73,
+        "rent": 20,
+        "return": 53,
+        "general": 3,
+        "electric": 17,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321049",
+        "name": "成功大學勝利校區(東寧路)",
+        "lat": 22.99224,
+        "lon": 120.22008,
+        "address": "東寧路26號北側",
+        "capacity": 23,
+        "rent": 9,
+        "return": 14,
+        "general": 4,
+        "electric": 5,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321050",
+        "name": "臺南文化創意產業園區",
+        "lat": 22.99948,
+        "lon": 120.21273,
+        "address": "北門路二段16號",
+        "capacity": 43,
+        "rent": 33,
+        "return": 10,
+        "general": 22,
+        "electric": 11,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321052",
+        "name": "臺南車站(前鋒路)",
+        "lat": 22.99716,
+        "lon": 120.21366,
+        "address": "前鋒路201號東側",
+        "capacity": 90,
+        "rent": 84,
+        "return": 6,
+        "general": 20,
+        "electric": 64,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321061",
+        "name": "長榮女中",
+        "lat": 22.99109,
+        "lon": 120.22115,
+        "address": "長榮路二段135號",
+        "capacity": 19,
+        "rent": 13,
+        "return": 6,
+        "general": 4,
+        "electric": 9,
+        "update": "2026-06-09 19:53:36"
+    }
+];
+  let bestBikeMarker = null;
+  const bikeIcon = L.divIcon({ className: '', html: '<div class="bike-icon">🚲</div>', iconSize: [30,30], iconAnchor: [15,15], popupAnchor: [0,-14] });
+
+  function renderYouBike() {
+    let rentTotal = 0, returnTotal = 0, electricTotal = 0;
+    const sorted = [...youbikeData].sort((a,b)=>b.rent-a.rent);
+    youbikeData.forEach(s => {
+      rentTotal += s.rent; returnTotal += s.return; electricTotal += s.electric;
+      const marker = L.marker([s.lat, s.lon], {icon: bikeIcon}).bindPopup(popup('🚲 ' + s.name, `
+        地址：${s.address}<br>
+        可借車：<b>${s.rent}</b> 輛（一般 ${s.general}／電輔 ${s.electric}）<br>
+        可還空位：<b>${s.return}</b> 格<br>
+        總車柱數：${s.capacity}<br>
+        更新時間：${s.update}<br>
+        資料來源：TDX YouBike API 快照
+      `));
+      marker.station = s;
+      marker.addTo(youbikeLayer);
+      if(!bestBikeMarker || s.rent > bestBikeMarker.station.rent) bestBikeMarker = marker;
+    });
+    document.getElementById('bikeStationCount').innerText = youbikeData.length;
+    document.getElementById('bikeRentTotal').innerText = rentTotal;
+    document.getElementById('bikeReturnTotal').innerText = returnTotal;
+    document.getElementById('bikeElectricTotal').innerText = electricTotal;
+    document.getElementById('bikeList').innerHTML = sorted.slice(0,8).map(s => `<div class="bike-row"><span>${s.name}</span><b>${s.rent} 輛</b></div>`).join('');
+  }
+  renderYouBike();
+
+  function focusBestBikeStation() {
+    if(!map.hasLayer(youbikeLayer)) map.addLayer(youbikeLayer);
+    if(bestBikeMarker) {
+      const s = bestBikeMarker.station;
+      map.setView([s.lat, s.lon], 17);
+      bestBikeMarker.openPopup();
+    }
+  }
+
+
+  const busData = [
+    {
+        "uid": "THB294936",
+        "name": "臺南火車站(南站)",
+        "lat": 22.996968,
+        "lon": 120.211286,
+        "address": "台南市中西區中山路209號",
+        "bearing": "SE",
+        "arrivals": [
+            {
+                "route": "8050",
+                "subroute": "8050",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "THB295186",
+        "name": "臺南火車站(南站)",
+        "lat": 22.996968,
+        "lon": 120.211286,
+        "address": "台南市中西區中山路209號",
+        "bearing": "SE",
+        "arrivals": [
+            {
+                "route": "8050",
+                "subroute": "8050",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "THB308363",
+        "name": "臺南一中",
+        "lat": 22.99289607,
+        "lon": 120.2178171,
+        "address": "臺南市東區勝利路94號對面",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "8050",
+                "subroute": "8050",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "THB308364",
+        "name": "臺南一中",
+        "lat": 22.99301089,
+        "lon": 120.2179934,
+        "address": "臺南市東區勝利路94號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "8050",
+                "subroute": "8050",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "KHH10023994481",
+        "name": "臺南火車站(成功路)",
+        "lat": 22.997344,
+        "lon": 120.210582,
+        "address": "",
+        "bearing": "E",
+        "arrivals": [
+            {
+                "route": "239",
+                "subroute": "239",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "KHH10023994492",
+        "name": "臺南火車站(成功路)",
+        "lat": 22.997526,
+        "lon": 120.210631,
+        "address": "",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "239",
+                "subroute": "239",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "KHH10804694501",
+        "name": "臺南火車站(成功路)",
+        "lat": 22.997526,
+        "lon": 120.210631,
+        "address": "",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "8046A",
+                "subroute": "8046A",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "KHH10807394502",
+        "name": "臺南火車站(成功路)",
+        "lat": 22.997526,
+        "lon": 120.210631,
+        "address": "",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "8046B(部分繞駛樹人醫專)",
+                "subroute": "8046B(部分繞駛樹人醫專)",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "KHH10807394511",
+        "name": "臺南火車站(成功路)",
+        "lat": 22.997344,
+        "lon": 120.210582,
+        "address": "",
+        "bearing": "E",
+        "arrivals": [
+            {
+                "route": "8046B(部分繞駛樹人醫專)",
+                "subroute": "8046B(部分繞駛樹人醫專)",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10029",
+        "name": "臺南火車站(中山路C)",
+        "lat": 22.99675,
+        "lon": 120.21131,
+        "address": "台南市北區中山路197至207號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "7",
+                "subroute": "7路 公園北路→台糖安南學苑",
+                "eta": 1718,
+                "status": 1,
+                "label": "約 29 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10031",
+        "name": "臺南火車站(中山路D)",
+        "lat": 22.99641,
+        "lon": 120.21113,
+        "address": "台南市北區中山路176至180號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "7",
+                "subroute": "7路 台糖安南學苑→公園北路",
+                "eta": 585,
+                "status": 0,
+                "label": "約 10 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10143",
+        "name": "臺南火車站(中山路D)",
+        "lat": 22.99641,
+        "lon": 120.21113,
+        "address": "台南市北區中山路176至180號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "18",
+                "subroute": "18路 大成國中→和順轉運站",
+                "eta": 1586,
+                "status": 1,
+                "label": "約 26 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10205",
+        "name": "臺南火車站(中山路C)",
+        "lat": 22.99675,
+        "lon": 120.21131,
+        "address": "台南市北區中山路197至207號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "18",
+                "subroute": "18路 和順轉運站→大成國中 [延國民路]",
+                "eta": 922,
+                "status": 0,
+                "label": "約 15 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10378",
+        "name": "勝利北路",
+        "lat": 23.00459,
+        "lon": 120.21882,
+        "address": "台南市北區勝利路224號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 和順轉運站→大甲里",
+                "eta": 4515,
+                "status": 1,
+                "label": "約 75 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10379",
+        "name": "成大醫院(勝利路)",
+        "lat": 23.00247,
+        "lon": 120.21865,
+        "address": "台南市北區勝利路138號成杏校區成功大學",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 和順轉運站→大甲里",
+                "eta": 4537,
+                "status": 1,
+                "label": "約 76 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10381",
+        "name": "小東路",
+        "lat": 23.00131,
+        "lon": 120.21601,
+        "address": "台南市北區小東路機車專用道成功大學",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 和順轉運站→大甲里",
+                "eta": 4665,
+                "status": 1,
+                "label": "約 78 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10382",
+        "name": "臺南公園(北門路)",
+        "lat": 23.00099,
+        "lon": 120.21294,
+        "address": "台南市東區北門路二段28號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 和順轉運站→大甲里",
+                "eta": 4765,
+                "status": 1,
+                "label": "約 79 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10383",
+        "name": "臺南火車站(成功路A)",
+        "lat": 22.99751,
+        "lon": 120.21067,
+        "address": "台南市北區成功路6號",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 和順轉運站→大甲里",
+                "eta": 4833,
+                "status": 1,
+                "label": "約 81 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10426",
+        "name": "臺南火車站(成功路B)",
+        "lat": 22.99741,
+        "lon": 120.21034,
+        "address": "台南市北區成功路1至3號",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 市立醫院→和順轉運站",
+                "eta": 3476,
+                "status": 1,
+                "label": "約 58 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10427",
+        "name": "臺南公園(北門路)",
+        "lat": 23.00069,
+        "lon": 120.21308,
+        "address": "台南市東區北門路二段28號",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 市立醫院→和順轉運站",
+                "eta": 3734,
+                "status": 1,
+                "label": "約 62 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10428",
+        "name": "小東路",
+        "lat": 23.00115,
+        "lon": 120.21568,
+        "address": "台南市北區小東路35號成功大學力行校區成功大學",
+        "bearing": "E",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 市立醫院→和順轉運站",
+                "eta": 3818,
+                "status": 1,
+                "label": "約 64 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10430",
+        "name": "成大醫院(勝利路)",
+        "lat": 23.00281,
+        "lon": 120.21872,
+        "address": "台南市北區勝利路367號成功大學力行校區成功大學",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 市立醫院→和順轉運站",
+                "eta": 3917,
+                "status": 1,
+                "label": "約 65 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10431",
+        "name": "勝利北路",
+        "lat": 23.00477,
+        "lon": 120.21888,
+        "address": "台南市北區勝利路210號",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 市立醫院→和順轉運站",
+                "eta": 3965,
+                "status": 1,
+                "label": "約 66 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10457",
+        "name": "東寧社區",
+        "lat": 22.99161,
+        "lon": 120.22302,
+        "address": "台南市東區東寧路81號",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1030,
+                "status": 0,
+                "label": "約 17 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10458",
+        "name": "成功新村",
+        "lat": 22.99224,
+        "lon": 120.21975,
+        "address": "台南市東區東寧路3-13號",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1068,
+                "status": 0,
+                "label": "約 18 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10459",
+        "name": "臺南一中",
+        "lat": 22.99301,
+        "lon": 120.21794,
+        "address": "台南市東區勝利路80號",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1148,
+                "status": 0,
+                "label": "約 19 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10460",
+        "name": "勝利大學路口",
+        "lat": 22.99576,
+        "lon": 120.21822,
+        "address": "台南市東區勝利路116號勝利校區成功大學",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1217,
+                "status": 0,
+                "label": "約 20 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10461",
+        "name": "勝利路",
+        "lat": 22.99792,
+        "lon": 120.21834,
+        "address": "台南市東區勝利路294號成功大學光復校區",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1303,
+                "status": 0,
+                "label": "約 22 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10462",
+        "name": "成功大學",
+        "lat": 23.00109,
+        "lon": 120.21812,
+        "address": "台南市北區小東路35號成功大學力行校區",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1361,
+                "status": 0,
+                "label": "約 23 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10463",
+        "name": "小東路",
+        "lat": 23.00131,
+        "lon": 120.21601,
+        "address": "台南市北區小東路機車專用道成功大學",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1439,
+                "status": 0,
+                "label": "約 24 分鐘"
+            }
+        ]
+    }
+];
+  let soonBusMarker = null;
+  const busIcon = L.divIcon({ className: '', html: '<div class="bus-icon">🚌</div>', iconSize: [30,30], iconAnchor: [15,15], popupAnchor: [0,-14] });
+
+  function formatBusArrivals(arrivals) {
+    if(!arrivals || arrivals.length === 0) return '目前無到站資料';
+    return arrivals.map(a => {
+      const route = a.route || '未知路線';
+      const label = a.label || '無資料';
+      return `🚌 <b>${route}</b>：${label}<br><span style="color:#697386">${a.subroute || ''}</span>`;
+    }).join('<hr style="border:0;border-top:1px solid #dde3ea;margin:6px 0;">');
+  }
+
+  function renderBus() {
+    let routes = new Set();
+    let soonCount = 0;
+    let candidates = [];
+    busData.forEach(s => {
+      (s.arrivals || []).forEach(a => {
+        if(a.route) routes.add(a.route);
+        if(typeof a.eta === 'number' && a.eta <= 1800) soonCount++;
+        if(typeof a.eta === 'number') candidates.push({stop:s, arrival:a});
+      });
+      const marker = L.marker([s.lat, s.lon], {icon: busIcon}).bindPopup(popup('🚌 ' + s.name, `
+        地址：${s.address || '未提供'}<br>
+        方位：${s.bearing || '未提供'}<br>
+        <hr>
+        ${formatBusArrivals(s.arrivals)}<br>
+        <span style="color:#697386">資料來源：TDX Bus NearBy API 快照</span>
+      `));
+      marker.stop = s;
+      marker.addTo(busLayer);
+    });
+
+    candidates.sort((a,b)=>a.arrival.eta-b.arrival.eta);
+    if(candidates.length) {
+      const first = candidates[0].stop;
+      soonBusMarker = [...busLayer.getLayers()].find(m => m.stop && m.stop.uid === first.uid);
+    }
+
+    document.getElementById('busStopCount').innerText = busData.length;
+    document.getElementById('busRouteCount').innerText = routes.size;
+    document.getElementById('busSoonCount').innerText = soonCount;
+    document.getElementById('busDataTime').innerText = busData.reduce((n,s)=>n+(s.arrivals?s.arrivals.length:0),0);
+    document.getElementById('busList').innerHTML = candidates.slice(0,8).map(c => `
+      <div class="bus-row">
+        <span>${c.stop.name}｜${c.arrival.route}路</span>
+        <b>${c.arrival.label}</b>
+      </div>
+    `).join('') || '<div>目前沒有可顯示的到站資料</div>';
+  }
+  renderBus();
+
+  function focusSoonBusStop() {
+    if(!map.hasLayer(busLayer)) map.addLayer(busLayer);
+    if(soonBusMarker) {
+      map.setView([soonBusMarker.stop.lat, soonBusMarker.stop.lon], 17);
+      soonBusMarker.openPopup();
+    }
+  }
+
+  function setMode(mode, btn){
+    document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const names = {campus:'校園導覽', gnss:'GNSS分析', safety:'校園安全', facility:'設施調查', bike:'YouBike 即時站點', bus:'公車到站資訊'};
+    document.getElementById('modeText').innerText = '目前模式：' + names[mode];
+    if(mode==='gnss'){ map.addLayer(gnssHeat); map.removeLayer(facilities); map.addLayer(buildings); map.addLayer(arcgisBuildings); }
+    if(mode==='safety'){ map.addLayer(safety); map.addLayer(emergencyRoute); map.removeLayer(gnssHeat); }
+    if(mode==='facility'){ map.addLayer(facilities); map.removeLayer(gnssHeat); }
+    if(mode==='bike'){ map.addLayer(youbikeLayer); map.removeLayer(gnssHeat); map.addLayer(roads); map.setView([22.998,120.220], 15); }
+    if(mode==='bus'){ map.addLayer(busLayer); map.removeLayer(gnssHeat); map.addLayer(roads); map.setView([22.998,120.220], 15); }
+    if(mode==='campus'){ [buildings,arcgisBuildings,roads,gnssHeat,safety,facilities,emergencyRoute,youbikeLayer,busLayer].forEach(l=>map.addLayer(l)); }
+  }
+
+  function showBestGNSS(){
+    bestGNSS.clearLayers();
+    const best = [
+      ['Top 1 最佳觀測點',22.99655,120.21865,'遮蔽率 8%｜可見衛星 26｜適合 GNSS 控制測量'],
+      ['Top 2 觀測點',22.99628,120.22045,'遮蔽率 15%｜可見衛星 23｜適合 RTK 檢核'],
+      ['Top 3 觀測點',22.99705,120.21825,'遮蔽率 19%｜可見衛星 22｜開闊區域']
+    ];
+    best.forEach(p => L.circleMarker([p[1],p[2]],{radius:12,color:'#ffd166',fillColor:'#ffd166',fillOpacity:1,weight:3})
+      .bindPopup(popup(p[0],p[3])).addTo(bestGNSS));
+    bestGNSS.addTo(map);
+    map.fitBounds(bestGNSS.getBounds(), {padding:[60,60]});
+  }
+
+  /*
+    若要改成真正即時串接 TDX：
+    1. 不建議把 Client Secret 寫在前端 HTML。
+    2. 正式版應用後端或雲端函式取得 Access Token。
+    3. 前端再呼叫自己的後端 API，取得 Station/NearBy 與 Availability/NearBy 合併後的資料。
+  */
+
+</script>
+</body>
+</html>
