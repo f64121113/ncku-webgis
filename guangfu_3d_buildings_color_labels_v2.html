@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>成功大學光復校區｜彩色 3D 建物展示 V2</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.30/"></script>
+
+  <style>
+    :root {
+      --sky: #7bb4d9;
+      --green: #5b9f7a;
+      --yellow: #f3d36b;
+      --pink: #f3a6b8;
+      --text: #2f3142;
+      --muted: #687184;
+      --paper: rgba(255, 255, 255, 0.95);
+      --shadow: 0 14px 34px rgba(54, 85, 110, 0.20);
+    }
+
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
+      color: var(--text);
+    }
+
+    .info-panel {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      width: 390px;
+      z-index: 99;
+      border-radius: 22px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.72);
+    }
+
+    .panel-header {
+      padding: 24px 28px 20px;
+      color: white;
+      background:
+        radial-gradient(circle at 15% 15%, rgba(255,255,255,0.34), transparent 28%),
+        linear-gradient(135deg, var(--sky), var(--green));
+    }
+
+    .panel-kicker {
+      display: inline-block;
+      margin-bottom: 9px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.22);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+
+    .panel-header h1 {
+      margin: 0;
+      font-size: 25px;
+      line-height: 1.35;
+    }
+
+    .panel-body {
+      padding: 19px 28px 23px;
+      line-height: 1.65;
+    }
+
+    .panel-body p {
+      margin: 0 0 12px;
+      font-size: 15px;
+    }
+
+    .tips {
+      margin-top: 13px;
+      padding: 14px 15px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #dff2fb, #e8f5ee);
+      color: #425064;
+      font-size: 13px;
+      border: 1px solid rgba(91,159,122,0.14);
+    }
+
+    .tips b { color: #3d7f61; }
+
+    .note {
+      margin-top: 13px;
+      padding-left: 11px;
+      border-left: 3px solid var(--green);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 9px;
+      margin-top: 15px;
+    }
+
+    .panel-button {
+      flex: 1;
+      padding: 10px 11px;
+      border-radius: 999px;
+      border: 0;
+      color: white;
+      background: linear-gradient(135deg, #6aaed6, #5b9f7a);
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+      box-shadow: 0 8px 18px rgba(91,159,122,0.26);
+    }
+
+    .panel-button.secondary {
+      background: linear-gradient(135deg, #f3a6b8, #f3d36b);
+      color: #465063;
+    }
+
+    .panel-button:hover {
+      filter: brightness(1.04);
+      transform: translateY(-1px);
+    }
+
+    .status {
+      margin-top: 10px;
+      color: #536074;
+      font-size: 12px;
+    }
+
+    .esri-layer-list {
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(54,85,110,0.16);
+    }
+
+    .esri-widget {
+      font-family: "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
+    }
+
+    @media (max-width: 720px) {
+      .info-panel {
+        left: 14px;
+        right: 14px;
+        top: 14px;
+        width: auto;
+      }
+
+      .panel-header h1 { font-size: 21px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="viewDiv"></div>
+
+  <section class="info-panel">
+    <div class="panel-header">
+      <div class="panel-kicker">NCKU GUANGFU CAMPUS</div>
+      <h1>成功大學光復校區<br>彩色 3D 建物展示 V2</h1>
+    </div>
+
+    <div class="panel-body">
+      <p>此頁使用 ArcGIS SceneView 載入 3D 建物，並以亮色系為每棟建築套用不同顏色；若資料表含建物名稱欄位，會自動顯示標籤。</p>
+
+      <div class="tips">
+        <b>操作：</b>左鍵拖曳平移，右鍵拖曳旋轉，滾輪縮放；或按住 Ctrl + 拖曳調整視角。
+      </div>
+
+      <div class="button-row">
+        <button class="panel-button" id="flyButton">飛到光復校區</button>
+        <button class="panel-button secondary" id="tiltButton">傾斜視角</button>
+      </div>
+
+      <div class="status" id="statusText">正在讀取建物屬性與標籤…</div>
+      <div class="note">若沒有顯示中文名稱，通常代表圖層屬性表沒有建物名稱欄位，系統會改以 ObjectID 顯示。</div>
+    </div>
+  </section>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/SceneView",
+      "esri/layers/SceneLayer",
+      "esri/layers/FeatureLayer",
+      "esri/layers/GraphicsLayer",
+      "esri/Graphic",
+      "esri/widgets/LayerList",
+      "esri/widgets/Fullscreen",
+      "esri/widgets/Home",
+      "esri/widgets/ScaleBar"
+    ], function(
+      Map,
+      SceneView,
+      SceneLayer,
+      FeatureLayer,
+      GraphicsLayer,
+      Graphic,
+      LayerList,
+      Fullscreen,
+      Home,
+      ScaleBar
+    ) {
+
+      
+const buildingColorMap = {
+  "中正堂":[255,184,108,0.95],
+  "管理學院綜合大樓":[123,180,217,0.95],
+  "雲平大樓":[155,216,142,0.95],
+  "唯農大樓":[164,160,232,0.95],
+  "學生活動中心":[243,166,184,0.95],
+  "軍訓大樓":[255,211,105,0.95],
+  "工業設計系館(大成館)":[117,205,190,0.95],
+  "歷史系館(舊文學院大樓)":[255,159,128,0.95]
+};
+
+const pastelColors = [
+        [255, 184, 108, 0.92],
+        [255, 211, 105, 0.92],
+        [155, 216, 142, 0.92],
+        [117, 205, 190, 0.92],
+        [123, 180, 217, 0.92],
+        [164, 160, 232, 0.92],
+        [243, 166, 184, 0.92],
+        [255, 159, 128, 0.92],
+        [184, 224, 255, 0.92],
+        [201, 232, 155, 0.92],
+        [255, 198, 221, 0.92],
+        [245, 224, 135, 0.92]
+      ];
+
+      const building3DLayer = new SceneLayer({
+        url: "https://services5.arcgis.com/yqmzFsAzBUNEIWLw/arcgis/rest/services/%E5%85%89%E5%BE%A9%E6%B8%AC%E5%8D%80%E5%BB%BA%E7%89%A93D_2/SceneServer",
+        title: "光復校區 3D 建物",
+        popupEnabled: true,
+        elevationInfo: {
+          mode: "absolute-height"
+        }
+      });
+
+      const buildingFeatureLayer = new FeatureLayer({
+        url: "https://services5.arcgis.com/yqmzFsAzBUNEIWLw/arcgis/rest/services/%E5%85%89%E5%BE%A9%E6%B8%AC%E5%8D%80%E5%BB%BA%E7%89%A93D_2/FeatureServer",
+        title: "建物名稱來源",
+        outFields: ["*"],
+        opacity: 0,
+        visible: false
+      });
+
+      const labelLayer = new GraphicsLayer({
+        title: "建物名稱標籤",
+        elevationInfo: {
+          mode: "relative-to-ground",
+          offset: 20
+        }
+      });
+
+      const map = new Map({
+        basemap: "streets-vector",
+        ground: "world-elevation",
+        layers: [building3DLayer, labelLayer]
+      });
+
+      const view = new SceneView({
+        container: "viewDiv",
+        map: map,
+        viewingMode: "global",
+        qualityProfile: "high",
+        camera: {
+          position: {
+            longitude: 120.219,
+            latitude: 22.997,
+            z: 520
+          },
+          tilt: 62,
+          heading: 325
+        },
+        environment: {
+          background: {
+            type: "color",
+            color: [225, 244, 253, 1]
+          },
+          atmosphereEnabled: true,
+          starsEnabled: false,
+          lighting: {
+            type: "sun",
+            date: new Date("2026-06-11T10:30:00+08:00"),
+            directShadowsEnabled: true,
+            ambientOcclusionEnabled: true
+          }
+        }
+      });
+
+      view.ui.add(new Home({ view: view }), "top-left");
+      view.ui.add(new Fullscreen({ view: view }), "top-left");
+      view.ui.add(new LayerList({ view: view }), "top-right");
+      view.ui.add(new ScaleBar({ view: view, unit: "metric" }), "bottom-right");
+
+      function pickNameField(fields) {
+        const candidates = [
+          "建物名稱", "建築物名稱", "名稱", "館舍名稱", "大樓名稱",
+          "BuildingName", "BUILDINGNAME", "building_name", "NAME", "Name", "name",
+          "TITLE", "Title", "title"
+        ];
+
+        for (const c of candidates) {
+          const found = fields.find(f => f.name === c);
+          if (found) return found.name;
+        }
+
+        const textFields = fields.filter(f => f.type === "string");
+        return textFields.length ? textFields[0].name : null;
+      }
+
+      function makeMeshSymbol(color) {
+        return {
+          type: "mesh-3d",
+          symbolLayers: [{
+            type: "fill",
+            material: {
+              color: color,
+              colorMixMode: "replace"
+            },
+            edges: {
+              type: "solid",
+              color: [84, 104, 112, 0.55],
+              size: 0.6
+            }
+          }]
+        };
+      }
+
+      function centerOfGeometry(geometry) {
+        if (!geometry) return null;
+        if (geometry.extent && geometry.extent.center) return geometry.extent.center;
+        if (geometry.centroid) return geometry.centroid;
+        return null;
+      }
+
+      function createLabelGraphic(point, text) {
+        return new Graphic({
+          geometry: point,
+          symbol: {
+            type: "point-3d",
+            symbolLayers: [{
+              type: "text",
+              text: text,
+              material: {
+                color: [47, 49, 66, 1]
+              },
+              halo: {
+                color: [255, 255, 255, 0.88],
+                size: 1.4
+              },
+              size: 14,
+              font: {
+                family: "Microsoft JhengHei",
+                weight: "bold"
+              }
+            }],
+            verticalOffset: {
+              screenLength: 18,
+              maxWorldLength: 80,
+              minWorldLength: 10
+            },
+            callout: {
+              type: "line",
+              color: [90, 110, 118, 0.45],
+              size: 0.6
+            }
+          }
+        });
+      }
+
+      async function applyBuildingColorsAndLabels() {
+        await buildingFeatureLayer.load();
+
+        const objectIdField = buildingFeatureLayer.objectIdField;
+        const nameField = pickNameField(buildingFeatureLayer.fields);
+
+        const query = buildingFeatureLayer.createQuery();
+        query.where = "1=1";
+        query.outFields = ["*"];
+        query.returnGeometry = true;
+        query.num = 2000;
+
+        const result = await buildingFeatureLayer.queryFeatures(query);
+        const features = result.features || [];
+
+        const uniqueValueInfos = [];
+        const labelGraphics = [];
+
+        features.forEach((feature, index) => {
+          const objectId = feature.attributes[objectIdField];
+          const color = pastelColors[index % pastelColors.length];
+          const labelText = nameField && feature.attributes[nameField]
+            ? String(feature.attributes[nameField])
+            : "建物 " + objectId;
+
+          uniqueValueInfos.push({
+            value: String(objectId),
+            label: labelText,
+            symbol: makeMeshSymbol(color)
+          });
+
+          const center = centerOfGeometry(feature.geometry);
+          if (center) {
+            labelGraphics.push(createLabelGraphic(center, labelText));
+          }
+        });
+
+        building3DLayer.renderer = {
+          type: "unique-value",
+          field: objectIdField,
+          defaultSymbol: makeMeshSymbol([248, 246, 235, 0.96]),
+          uniqueValueInfos: uniqueValueInfos
+        };
+
+        labelLayer.removeAll();
+        labelLayer.addMany(labelGraphics);
+
+        document.getElementById("statusText").textContent =
+          "已套用 " + features.length + " 棟建物顏色與標籤" +
+          (nameField ? "，名稱欄位：" + nameField : "，未找到名稱欄位，使用 ObjectID");
+      }
+
+      Promise.all([building3DLayer.load(), view.when()])
+        .then(function() {
+          if (building3DLayer.fullExtent) {
+            view.goTo(building3DLayer.fullExtent).catch(function(error) {
+              console.warn("Layer extent goTo failed:", error);
+            });
+          }
+          return applyBuildingColorsAndLabels();
+        })
+        .catch(function(error) {
+          console.error("3D building setup failed:", error);
+          document.getElementById("statusText").textContent = "3D 建物或標籤讀取失敗，請確認 Scene Layer / Feature Layer 已公開。";
+        });
+
+      document.getElementById("flyButton").addEventListener("click", function() {
+        view.goTo({
+          position: {
+            longitude: 120.219,
+            latitude: 22.997,
+            z: 520
+          },
+          tilt: 62,
+          heading: 325
+        }, {
+          duration: 1600
+        });
+      });
+
+      document.getElementById("tiltButton").addEventListener("click", function() {
+        view.goTo({
+          tilt: 70,
+          heading: view.camera.heading + 35
+        }, {
+          duration: 1000
+        });
+      });
+    });
+  </script>
+</body>
+</html>
