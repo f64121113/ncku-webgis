@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>成功大學光復校區空間資訊平台</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Microsoft JhengHei", Arial, sans-serif; background: #eef2f6; color: #17212b; }
+    .app { display: grid; grid-template-columns: 360px 1fr; height: 100vh; }
+    .sidebar { background: linear-gradient(180deg,#14213d,#243b63); color: #fff; padding: 22px; overflow-y: auto; box-shadow: 6px 0 18px rgba(0,0,0,.2); z-index: 1000; }
+    .brand { margin-bottom: 18px; }
+    .brand .tag { display: inline-block; background: rgba(255,255,255,.14); padding: 5px 10px; border-radius: 999px; font-size: 12px; margin-bottom: 10px; }
+    .brand h1 { margin: 0; font-size: 24px; line-height: 1.35; }
+    .brand p { margin: 8px 0 0; color: #d5deee; font-size: 13px; line-height: 1.7; }
+    .panel { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 14px; margin: 14px 0; backdrop-filter: blur(8px); }
+    .panel h2 { margin: 0 0 12px; font-size: 16px; }
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    button { border: 0; border-radius: 12px; padding: 11px 10px; cursor: pointer; font-family: inherit; font-weight: 700; }
+    .mode-btn { background: #f8fafc; color: #1d3557; text-align: left; transition: .15s; }
+    .mode-btn:hover, .mode-btn.active { background: #ffd166; color: #1a1a1a; transform: translateY(-1px); }
+    .layer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,.12); font-size: 14px; }
+    .layer:last-child { border-bottom: 0; }
+    .switch { transform: scale(1.1); }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat { background: rgba(255,255,255,.92); color: #17212b; border-radius: 14px; padding: 12px; }
+    .stat b { display: block; font-size: 24px; color: #1d3557; }
+    .stat span { font-size: 12px; color: #52616f; }
+    .legend { background: rgba(255,255,255,.92); color: #17212b; border-radius: 14px; padding: 12px; line-height: 1.8; font-size: 13px; }
+    .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    .green { background:#2a9d8f; } .yellow { background:#f4a261; } .red { background:#e63946; } .blue { background:#457b9d; } .orange { background:#ff8c42; } .purple { background:#6c63ff; } .arcgis-building { background:#5b9f7a; } .tree-dot { background:#6f8f63; }
+    .tree-icon {
+      width:32px;
+      height:32px;
+      border-radius:50%;
+      background-image:url('data:image/png;base64,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');
+      background-size:cover;
+      background-position:center;
+      background-repeat:no-repeat;
+      filter: drop-shadow(0 3px 4px rgba(0,0,0,.28));
+    }
+    .bike-icon { background:#ff8c42; color:#fff; border:2px solid #fff; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,.35); font-size:16px; }
+    .road-label { background:rgba(255,255,255,.86); color:#1f3a63; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,.12); }
+    .bus-icon { background:#6c63ff; color:#fff; border:2px solid #fff; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,.35); font-size:15px; }
+    .bike-list, .bus-list { max-height: 190px; overflow:auto; background:rgba(255,255,255,.92); color:#17212b; border-radius:12px; padding:10px; font-size:12px; line-height:1.7; }
+    .bike-row, .bus-row { display:flex; justify-content:space-between; gap:8px; border-bottom:1px solid #dde3ea; padding:5px 0; }
+    .bike-row:last-child { border-bottom:0; }
+    .action { width: 100%; background: #2a9d8f; color: #fff; margin-top: 8px; }
+    .action.secondary { background: #457b9d; }
+    #map { width: 100%; height: 100vh; background:#f7f8fa; }
+    .topbar { position: absolute; top: 16px; left: 382px; right: 18px; z-index: 999; display: flex; gap: 10px; align-items: center; pointer-events: none; }
+    .search { pointer-events: auto; flex: 1; max-width: 460px; background: #fff; border-radius: 14px; box-shadow: 0 8px 22px rgba(0,0,0,.18); padding: 12px 16px; color: #4c5662; }
+    .pill { pointer-events: auto; background: #fff; border-radius: 999px; padding: 10px 14px; box-shadow: 0 8px 22px rgba(0,0,0,.18); font-weight: 700; color: #1d3557; font-size: 13px; }
+    .leaflet-popup-content { font-family: "Microsoft JhengHei", Arial, sans-serif; line-height: 1.6; }
+    .popup-title { font-weight: 800; font-size: 15px; color: #14213d; }
+    .form { display: grid; gap: 8px; }
+    .form input, .form select, .form textarea { width: 100%; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.9); border-radius: 10px; padding: 9px; font-family: inherit; }
+    @media (max-width: 860px) { .app { grid-template-columns: 1fr; grid-template-rows: 46vh 54vh; } .sidebar { height: 46vh; } #map { height: 54vh; } .topbar { left: 14px; top: calc(46vh + 12px); right: 14px; } }
+  
+    .building-shadow {
+      filter: drop-shadow(5px 7px 3px rgba(0,0,0,.38));
+    }
+
+    .building-label{
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      color: #3e457f;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-align: center;
+      text-shadow:
+        1.5px 1.5px 2px #ffffff,
+       -1.5px -1.5px 2px #ffffff,
+        1.5px -1.5px 2px #ffffff,
+       -1.5px 1.5px 2px #ffffff,
+        2px 2px 4px rgba(0,0,0,.45);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .leaflet-tooltip.building-label::before{
+      display:none !important;
+    }
+
+  
+    /* Professional Morandi refinement */
+    :root{
+      --ink:#253044;
+      --navy:#2f3b59;
+      --navy-2:#3e4c70;
+      --cream:#f5f2eb;
+      --card:#ffffff;
+      --muted:#7b8494;
+      --line:#d9d6ce;
+      --accent:#8a9277;
+      --accent-2:#b08b73;
+      --flower:#935620;
+      --bike:#9b8f7a;
+      --bus:#7f8fa6;
+    }
+
+    body{
+      background: var(--cream) !important;
+      color: var(--ink) !important;
+    }
+
+    .app{
+      grid-template-columns: 340px 1fr !important;
+      background: var(--cream);
+    }
+
+    .sidebar{
+      background: linear-gradient(180deg,#27324d,#3d4a67) !important;
+      color:#fff !important;
+      padding: 24px 20px !important;
+      box-shadow: 10px 0 28px rgba(41,48,64,.18) !important;
+    }
+
+    .brand .tag{
+      background: rgba(255,255,255,.12) !important;
+      border:1px solid rgba(255,255,255,.18);
+      color:#ece8df;
+      letter-spacing:.3px;
+    }
+
+    .brand h1{
+      font-size:22px !important;
+      letter-spacing:.4px;
+    }
+
+    .brand p{
+      color:#d9d6ce !important;
+      line-height:1.75 !important;
+    }
+
+    .panel{
+      background: rgba(255,255,255,.105) !important;
+      border:1px solid rgba(255,255,255,.16) !important;
+      border-radius:18px !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+
+    .panel h2{
+      color:#f6f2ea;
+      font-size:15px !important;
+      letter-spacing:.4px;
+    }
+
+    .mode-grid{
+      grid-template-columns:1fr !important;
+      gap:8px !important;
+    }
+
+    .mode-btn{
+      background: rgba(255,255,255,.92) !important;
+      color: var(--navy) !important;
+      border:1px solid rgba(255,255,255,.18) !important;
+      border-radius:14px !important;
+      font-weight:700 !important;
+      letter-spacing:.2px;
+      padding: 11px 12px !important;
+    }
+
+    .mode-btn:hover,
+    .mode-btn.active{
+      background: #d9d2c3 !important;
+      color:#263049 !important;
+      transform: translateY(-1px);
+    }
+
+    .layer{
+      color:#f2eee6;
+      border-bottom:1px solid rgba(255,255,255,.12) !important;
+      font-size:13px !important;
+    }
+
+    .switch{
+      accent-color:#d9d2c3;
+    }
+
+    .stat,
+    .legend,
+    .bike-list,
+    .bus-list{
+      background: rgba(250,248,243,.96) !important;
+      color: var(--ink) !important;
+      border:1px solid rgba(217,214,206,.8);
+      box-shadow: 0 8px 18px rgba(27,34,48,.08);
+    }
+
+    .stat b{
+      color: var(--navy) !important;
+      font-size:22px !important;
+    }
+
+    .stat span{
+      color: var(--muted) !important;
+    }
+
+    .action{
+      background: var(--accent) !important;
+      color:#fff !important;
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:14px !important;
+      letter-spacing:.3px;
+    }
+
+    .action.secondary{
+      background: var(--navy-2) !important;
+    }
+
+    #map{
+      background:#f8f5ef !important;
+    }
+
+    .topbar{
+      left: 362px !important;
+    }
+
+    .search,
+    .pill{
+      background: rgba(250,248,243,.94) !important;
+      color: var(--navy) !important;
+      border:1px solid rgba(217,214,206,.85);
+      box-shadow: 0 12px 26px rgba(43,50,68,.15) !important;
+      backdrop-filter: blur(8px);
+    }
+
+    .leaflet-control-layers,
+    .leaflet-control-zoom a,
+    .leaflet-control-scale-line{
+      border:none !important;
+      box-shadow: 0 8px 20px rgba(43,50,68,.14) !important;
+      color: var(--navy) !important;
+    }
+
+    .bike-icon,
+    .bus-icon{
+      width:28px !important;
+      height:28px !important;
+      border-radius:50% !important;
+      border:2px solid rgba(255,255,255,.92) !important;
+      color:#fff !important;
+      font-size:0 !important;
+      box-shadow:0 4px 12px rgba(41,48,64,.25) !important;
+      position:relative;
+    }
+
+    .bike-icon{ background: var(--bike) !important; }
+    .bus-icon{ background: var(--bus) !important; }
+
+    .bike-icon::after{
+      content:"";
+      width:9px;
+      height:9px;
+      border-radius:50%;
+      background:#fff;
+      opacity:.92;
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+    }
+
+    .bus-icon::after{
+      content:"";
+      width:11px;
+      height:8px;
+      border-radius:2px;
+      background:#fff;
+      opacity:.92;
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+    }
+
+    .dot{
+      border-radius:3px !important;
+    }
+
+    .arcgis-building{ background:#9aa68f !important; }
+    .green{ background:#935620 !important; }
+    .tree-dot{ background:#7f8d68 !important; }
+    .orange{ background:var(--bike) !important; }
+    .purple{ background:var(--bus) !important; }
+
+    .building-shadow{
+      filter: drop-shadow(4px 6px 3px rgba(68,64,58,.28)) !important;
+    }
+
+    .building-label{
+      color:#3f4a66 !important;
+      font-size:12px !important;
+      font-weight:700 !important;
+      letter-spacing:.3px !important;
+      text-shadow:
+        1.2px 1.2px 2px rgba(255,255,255,.94),
+       -1.2px -1.2px 2px rgba(255,255,255,.94),
+        1.2px -1.2px 2px rgba(255,255,255,.94),
+       -1.2px 1.2px 2px rgba(255,255,255,.94),
+        1px 2px 4px rgba(68,64,58,.25) !important;
+    }
+
+    .leaflet-popup-content-wrapper{
+      border-radius:16px !important;
+      box-shadow: 0 12px 28px rgba(41,48,64,.18) !important;
+    }
+
+    .popup-title{
+      color:var(--navy) !important;
+    }
+
+    @media (max-width: 860px){
+      .topbar{ left:14px !important; }
+    }
+
+
+
+    /* Textured tree canopy icon */
+    .tree-icon{
+      width:32px !important;
+      height:32px !important;
+      border-radius:50% !important;
+      background-image:url('data:image/png;base64,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') !important;
+      background-size:cover !important;
+      background-position:center !important;
+      background-repeat:no-repeat !important;
+      background-color:transparent !important;
+      border:none !important;
+      box-shadow:none !important;
+      filter: drop-shadow(0 3px 4px rgba(0,0,0,.30)) !important;
+      font-size:0 !important;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="tag">NCKU Surveying Smart Campus Platform</div>
+      <h1>成功大學光復校區空間資訊平台</h1>
+      <p>以光復校區空間資料為核心，整合建物、花圃路線、YouBike 與公車資訊，呈現校園移動與環境脈絡。</p>
+    </div>
+
+    <div class="panel">
+      <h2>功能模式</h2>
+      <div class="mode-grid">
+        <button class="mode-btn active" onclick="setMode('campus', this)">🏫 校園導覽</button>
+
+        <button class="mode-btn" onclick="setMode('bike', this)">🚲 YouBike</button>
+        <button class="mode-btn" onclick="setMode('bus', this)">🚌 公車資訊</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>圖層控制</h2>
+      <label class="layer">光復測區建物 <input class="switch" type="checkbox" checked onchange="toggle(arcgisBuildings)"></label>
+      <label class="layer">光復校區花圃路線 <input class="switch" type="checkbox" checked onchange="toggle(flowerRoutes)"></label>
+      <label class="layer">測區樹木 <input class="switch" type="checkbox" checked onchange="toggle(treeLayer)"></label>
+      
+      <label class="layer">YouBike 即時站點 <input class="switch" type="checkbox" onchange="toggle(youbikeLayer)"></label>
+      <label class="layer">公車站牌與到站 <input class="switch" type="checkbox" onchange="toggle(busLayer)"></label>
+    </div>
+<div class="panel">
+      <h2>YouBike 即時摘要</h2>
+      <div class="stats">
+        <div class="stat"><b id="bikeStationCount">30</b><span>成大周邊站點</span></div>
+        <div class="stat"><b id="bikeRentTotal">--</b><span>可借車總數</span></div>
+        <div class="stat"><b id="bikeReturnTotal">--</b><span>可還空位總數</span></div>
+        <div class="stat"><b id="bikeElectricTotal">--</b><span>電輔車總數</span></div>
+      </div>
+      <button class="action secondary" onclick="focusBestBikeStation()">找最多可借車站點</button>
+      <div class="bike-list" id="bikeList" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>公車到站摘要</h2>
+      <div class="stats">
+        <div class="stat"><b id="busStopCount">--</b><span>成大周邊站牌</span></div>
+        <div class="stat"><b id="busRouteCount">--</b><span>經過路線數</span></div>
+        <div class="stat"><b id="busSoonCount">--</b><span>30分鐘內到站</span></div>
+        <div class="stat"><b id="busDataTime">--</b><span>資料筆數</span></div>
+      </div>
+      <button class="action secondary" onclick="focusSoonBusStop()">找最近到站公車</button>
+      <div class="bus-list" id="busList" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>圖例</h2>
+      <div class="legend">
+
+        <div><span class="dot arcgis-building"></span>光復測區建物</div>
+        <div><span class="dot green"></span>花圃路線</div>
+        <div><span class="dot tree-dot"></span>測區樹木</div>
+        <div><span class="dot orange"></span>YouBike 周邊站點</div>
+        <div><span class="dot purple"></span>公車站牌與預估到站</div>
+      </div>
+    </div>
+  </aside>
+
+  <main style="position:relative;">
+    <div class="topbar">
+      <div class="search">預設顯示：光復測區建物與花圃路線；可切換 YouBike 與公車資訊</div>
+      <div class="pill" id="modeText">目前模式：校園導覽</div>
+    </div>
+    <div id="map"></div>
+  </main>
+</div>
+
+<script>
+  const map = L.map('map', { zoomControl: false }).setView([22.9973, 120.2196], 17);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  L.control.scale({ metric: true, imperial: false }).addTo(map);
+
+  // 底圖設定：預設使用純白底圖，讓 ArcGIS 建物、YouBike 與公車站點成為主視覺。
+  const blankBase = L.layerGroup();
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    opacity: 0.18
+  }).addTo(map);
+  const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenTopoMap',
+    opacity: 0.18
+  });
+  L.control.layers({
+    '純白底圖': blankBase,
+    '淡化一般底圖（預設）': osm,
+    '淡化地形底圖': topo
+  }, {}, { position: 'bottomright' }).addTo(map);
+
+  // 預設只開啟：ArcGIS 建物。YouBike 與公車由左側開關或功能模式啟用。
+  const arcgisBuildings = L.layerGroup().addTo(map);
+  const flowerRoutes = L.layerGroup().addTo(map);
+  const treeLayer = L.layerGroup().addTo(map);
+  const youbikeLayer = L.layerGroup();
+  const busLayer = L.layerGroup();
+
+  function popup(title, html){ return `<div class="popup-title">${title}</div>${html}`; }
+
+  // ArcGIS Online Hosted Feature Layer：光復測區建物
+  // 使用 FeatureServer 根網址，並載入可能存在的子圖層。
+  // 若你在 ArcGIS Online 重新發布或新增圖層，不需要再手動猜 /0 或 /3；這裡會嘗試讀取 0～5 圖層。
+  const arcgisBuildingServiceUrl = "https://services5.arcgis.com/yqmzFsAzBUNEIWLw/arcgis/rest/services/%E5%85%89%E5%BE%A9%E6%B8%AC%E5%8D%80%E5%BB%BA%E7%89%A9/FeatureServer";
+  const arcgisBuildingLayerIds = [3];
+  let hasFitArcgisBuildings = false;
+
+  arcgisBuildingLayerIds.forEach(function(layerId) {
+    const layerUrl = `${arcgisBuildingServiceUrl}/${layerId}`;
+    const layer = L.esri.featureLayer({
+      url: layerUrl,
+      simplifyFactor: 0.35,
+      precision: 6,
+      style: function(feature) {
+        const p = feature.properties || {};
+        const name = String(
+          p.Name || p.name || p.名稱 || p.建物名稱 || p.建物 || p.BUILDING || p.OBJECTID || ''
+        );
+
+        // 莫蘭迪色系：依不同建物名稱分配低飽和色
+        let fill = '#a9b1a0'; // 預設鼠尾草灰綠
+        if (name.includes('雲平')) fill = '#c6a5b8';
+        else if (name.includes('管理')) fill = '#c7b99b';
+        else if (name.includes('中正')) fill = '#8fa8a1';
+        else if (name.includes('學生活動')) fill = '#9fb3c5';
+        else if (name.includes('軍訓')) fill = '#a9adb4';
+        else if (name.includes('唯農')) fill = '#aebd9a';
+        else if (name.includes('歷史')) fill = '#b98f86';
+        else if (name.includes('工業設計')) fill = '#c9c29d';
+        else if (name.includes('圖書')) fill = '#9c9eb7';
+        else if (name.includes('測量')) fill = '#91a7ad';
+        else if (name.includes('建築')) fill = '#b6a08b';
+
+        return {
+          color: 'transparent',
+          weight: 0,
+          fillColor: fill,
+          fillOpacity: 0.82,
+		  opacity: 1,
+          className: 'building-shadow'
+        };
+      },
+      onEachFeature: function(feature, leafletLayer) {
+        const p = feature.properties || {};
+
+        // 建物標籤欄位：依序嘗試常見欄位名稱
+        const title =
+          p.Name ||
+          p.name ||
+          p.名稱 ||
+          p.建物名稱 ||
+          p.建物 ||
+          p.BUILDING ||
+          p.BUILD_NAME ||
+          p.Label ||
+          p.label ||
+          p.標籤 ||
+          p.建物標籤 ||
+          p.OBJECTID ||
+          `光復測區建物 Layer ${layerId}`;
+
+        // 永久顯示建物名稱 Label
+        if (title) {
+          leafletLayer.bindTooltip(String(title), {
+            permanent: true,
+            direction: 'center',
+            className: 'building-label',
+            opacity: 1
+          });
+        }
+
+        const fields = Object.keys(p).slice(0, 8).map(k => `${k}：${p[k]}`).join('<br>');
+        leafletLayer.bindPopup(popup('🏢 ' + title, `${fields}<br>資料來源：ArcGIS Online Feature Layer<br>圖層編號：${layerId}`));
+      }
+    }).addTo(arcgisBuildings);
+
+    layer.on('load', function() {
+      if (hasFitArcgisBuildings) return;
+      try {
+        const b = layer.getBounds();
+        if (b && b.isValid()) {
+          map.fitBounds(b, { padding: [25, 25], maxZoom: 18 });
+          hasFitArcgisBuildings = true;
+        }
+      } catch(e) {}
+    });
+  });
+
+
+  // ArcGIS Online Hosted Feature Layer：光復校區花圃路線
+  const flowerRouteServiceUrl = "https://services5.arcgis.com/yqmzFsAzBUNEIWLw/arcgis/rest/services/%E5%85%89%E5%BE%A9%E6%A0%A1%E5%8D%80%E8%8A%B1%E5%9C%83%E8%B7%AF%E7%B7%9A/FeatureServer";
+  const flowerRouteLayerIds = [2];
+
+  flowerRouteLayerIds.forEach(function(layerId) {
+    const layerUrl = `${flowerRouteServiceUrl}/${layerId}`;
+    const layer = L.esri.featureLayer({
+      url: layerUrl,
+      simplifyFactor: 0.35,
+      precision: 6,
+      style: function(feature) {
+        return {
+          color: '#935620',
+          weight: 1.2,
+          opacity: 1
+        };
+      },
+      onEachFeature: function(feature, leafletLayer) {
+        const p = feature.properties || {};
+        const title =
+          p.Name ||
+          p.name ||
+          p.名稱 ||
+          p.路線名稱 ||
+          p.花圃名稱 ||
+          p.OBJECTID ||
+          `光復校區花圃路線 Layer ${layerId}`;
+
+        const fields = Object.keys(p).slice(0, 8).map(k => `${k}：${p[k]}`).join('<br>');
+        leafletLayer.bindPopup(popup('🌿 ' + title, `${fields}<br>資料來源：ArcGIS Online Feature Layer<br>圖層編號：${layerId}`));
+      }
+    }).addTo(flowerRoutes);
+  });
+
+
+  // ArcGIS Online Hosted Feature Layer：測區樹木
+  const treeServiceUrl = "https://services5.arcgis.com/yqmzFsAzBUNEIWLw/arcgis/rest/services/%E6%B8%AC%E5%8D%80%E6%A8%B9%E6%9C%A8/FeatureServer";
+  const treeLayerIds = [0];
+  const treeIcon = L.divIcon({
+    className: '',
+    html: '<div class="tree-icon"></div>',
+    iconSize: [32,32],
+    iconAnchor: [16,16],
+    popupAnchor: [0,-14]
+  });
+
+  treeLayerIds.forEach(function(layerId) {
+    const layerUrl = `${treeServiceUrl}/${layerId}`;
+    const layer = L.esri.featureLayer({
+      url: layerUrl,
+      simplifyFactor: 0.35,
+      precision: 6,
+      pointToLayer: function(feature, latlng) {
+        return L.marker(latlng, { icon: treeIcon });
+      },
+      style: function(feature) {
+        return {
+          color: '#6f8f63',
+          weight: 1,
+          opacity: 0.9,
+          fillColor: '#7f8d68',
+          fillOpacity: 0.55
+        };
+      },
+      onEachFeature: function(feature, leafletLayer) {
+        const p = feature.properties || {};
+        const title =
+          p.Name ||
+          p.name ||
+          p.名稱 ||
+          p.樹種 ||
+          p.樹木名稱 ||
+          p.SPECIES ||
+          p.OBJECTID ||
+          `測區樹木 Layer ${layerId}`;
+
+        const fields = Object.keys(p).slice(0, 8).map(k => `${k}：${p[k]}`).join('<br>');
+        leafletLayer.bindPopup(popup('🌳 ' + title, `${fields}<br>資料來源：ArcGIS Online Feature Layer<br>圖層編號：${layerId}`));
+      }
+    }).addTo(treeLayer);
+  });
+
+
+
+    function toggle(layer){ map.hasLayer(layer) ? map.removeLayer(layer) : map.addLayer(layer); }
+
+  const youbikeData = [
+    {
+        "uid": "TNN501305041",
+        "name": "臺南車站(前站三)",
+        "lat": 22.99679,
+        "lon": 120.21186,
+        "address": "北門路一段179號",
+        "capacity": 28,
+        "rent": 6,
+        "return": 20,
+        "general": 2,
+        "electric": 4,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309005",
+        "name": "臺南二中",
+        "lat": 23.00397,
+        "lon": 120.21322,
+        "address": "公園北路3號(東北側)",
+        "capacity": 81,
+        "rent": 11,
+        "return": 70,
+        "general": 9,
+        "electric": 2,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309006",
+        "name": "成大醫院(小東路)",
+        "lat": 23.00108,
+        "lon": 120.21824,
+        "address": "小東路35號前",
+        "capacity": 30,
+        "rent": 3,
+        "return": 26,
+        "general": 2,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309011",
+        "name": "成大醫院(東豐路)",
+        "lat": 23.00328,
+        "lon": 120.21734,
+        "address": "東豐路166號前",
+        "capacity": 19,
+        "rent": 7,
+        "return": 12,
+        "general": 4,
+        "electric": 3,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309021",
+        "name": "勝安香草運動公園",
+        "lat": 23.00594,
+        "lon": 120.21618,
+        "address": "開元路/前鋒路口",
+        "capacity": 20,
+        "rent": 8,
+        "return": 12,
+        "general": 6,
+        "electric": 2,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309025",
+        "name": "小東公園",
+        "lat": 23.00064,
+        "lon": 120.22511,
+        "address": "小東路57號東側",
+        "capacity": 20,
+        "rent": 4,
+        "return": 16,
+        "general": 4,
+        "electric": 0,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309034",
+        "name": "臺南車站(前站二)",
+        "lat": 22.99772,
+        "lon": 120.21193,
+        "address": "北門路二段3號旁",
+        "capacity": 46,
+        "rent": 19,
+        "return": 27,
+        "general": 13,
+        "electric": 6,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309039",
+        "name": "東豐長榮",
+        "lat": 23.00239,
+        "lon": 120.22315,
+        "address": "東豐路295號南側",
+        "capacity": 23,
+        "rent": 12,
+        "return": 11,
+        "general": 11,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309041",
+        "name": "臺南市桌球館",
+        "lat": 23.00185,
+        "lon": 120.22652,
+        "address": "東豐路458號",
+        "capacity": 20,
+        "rent": 6,
+        "return": 14,
+        "general": 6,
+        "electric": 0,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309043",
+        "name": "成大醫院成杏校區(東豐路)",
+        "lat": 23.0028,
+        "lon": 120.22037,
+        "address": "東豐路221號南側",
+        "capacity": 21,
+        "rent": 5,
+        "return": 16,
+        "general": 4,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309058",
+        "name": "台南公園(公園南路)",
+        "lat": 23.00013,
+        "lon": 120.21234,
+        "address": "北門路二段與公園南路交叉口",
+        "capacity": 60,
+        "rent": 17,
+        "return": 43,
+        "general": 15,
+        "electric": 2,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501309067",
+        "name": "重興綠園",
+        "lat": 23.00337,
+        "lon": 120.22658,
+        "address": "東豐路451巷169號(南側)",
+        "capacity": 22,
+        "rent": 16,
+        "return": 6,
+        "general": 15,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321003",
+        "name": "成大公園",
+        "lat": 22.99653,
+        "lon": 120.21491,
+        "address": "育樂街88號旁",
+        "capacity": 68,
+        "rent": 52,
+        "return": 10,
+        "general": 45,
+        "electric": 7,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321004",
+        "name": "勝利大學路口",
+        "lat": 22.99614,
+        "lon": 120.21822,
+        "address": "勝利路/大學路口(東南側)",
+        "capacity": 30,
+        "rent": 19,
+        "return": 11,
+        "general": 12,
+        "electric": 7,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321005",
+        "name": "馬雅各青年公園",
+        "lat": 22.99139,
+        "lon": 120.21502,
+        "address": "青年路360號(對側人行道)",
+        "capacity": 30,
+        "rent": 5,
+        "return": 25,
+        "general": 4,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321006",
+        "name": "東寧運動公園",
+        "lat": 22.99114,
+        "lon": 120.22462,
+        "address": "東寧路220號北側",
+        "capacity": 54,
+        "rent": 29,
+        "return": 25,
+        "general": 13,
+        "electric": 16,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321017",
+        "name": "大學路停車場",
+        "lat": 22.99657,
+        "lon": 120.2158,
+        "address": "大學路西段/育樂街66巷口",
+        "capacity": 19,
+        "rent": 16,
+        "return": 3,
+        "general": 12,
+        "electric": 4,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321018",
+        "name": "臺南一中",
+        "lat": 22.99271,
+        "lon": 120.21789,
+        "address": "勝利路/東寧路口(東北側)",
+        "capacity": 66,
+        "rent": 19,
+        "return": 47,
+        "general": 18,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321023",
+        "name": "東興公園(東安路251巷)",
+        "lat": 22.99684,
+        "lon": 120.22565,
+        "address": "東安路251巷60號(對側人行道)",
+        "capacity": 20,
+        "rent": 3,
+        "return": 17,
+        "general": 1,
+        "electric": 2,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321024",
+        "name": "東興公園(林森路)",
+        "lat": 22.99765,
+        "lon": 120.22444,
+        "address": "林森路二段/東和路口(東南側)",
+        "capacity": 20,
+        "rent": 7,
+        "return": 13,
+        "general": 7,
+        "electric": 0,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321025",
+        "name": "臺南車站(前站一)",
+        "lat": 22.99797,
+        "lon": 120.21238,
+        "address": "北門路二段12號旁",
+        "capacity": 33,
+        "rent": 20,
+        "return": 13,
+        "general": 14,
+        "electric": 6,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321035",
+        "name": "小東前鋒",
+        "lat": 23.00113,
+        "lon": 120.21495,
+        "address": "小東路15號南側",
+        "capacity": 30,
+        "rent": 17,
+        "return": 13,
+        "general": 7,
+        "electric": 10,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321036",
+        "name": "城垣小東門段殘蹟",
+        "lat": 22.99954,
+        "lon": 120.21851,
+        "address": "勝利路(城垣小東門段殘蹟)",
+        "capacity": 23,
+        "rent": 7,
+        "return": 16,
+        "general": 1,
+        "electric": 6,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321037",
+        "name": "長榮小東",
+        "lat": 23.00022,
+        "lon": 120.22232,
+        "address": "長榮路三段/小東路口(東南側)",
+        "capacity": 30,
+        "rent": 3,
+        "return": 27,
+        "general": 0,
+        "electric": 3,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321038",
+        "name": "大學長榮",
+        "lat": 22.99602,
+        "lon": 120.22216,
+        "address": "長榮路三段139號東北側",
+        "capacity": 50,
+        "rent": 14,
+        "return": 36,
+        "general": 13,
+        "electric": 1,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321039",
+        "name": "林森大學",
+        "lat": 22.99566,
+        "lon": 120.22389,
+        "address": "林森路二段260號東側",
+        "capacity": 73,
+        "rent": 20,
+        "return": 53,
+        "general": 3,
+        "electric": 17,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321049",
+        "name": "成功大學勝利校區(東寧路)",
+        "lat": 22.99224,
+        "lon": 120.22008,
+        "address": "東寧路26號北側",
+        "capacity": 23,
+        "rent": 9,
+        "return": 14,
+        "general": 4,
+        "electric": 5,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321050",
+        "name": "臺南文化創意產業園區",
+        "lat": 22.99948,
+        "lon": 120.21273,
+        "address": "北門路二段16號",
+        "capacity": 43,
+        "rent": 33,
+        "return": 10,
+        "general": 22,
+        "electric": 11,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321052",
+        "name": "臺南車站(前鋒路)",
+        "lat": 22.99716,
+        "lon": 120.21366,
+        "address": "前鋒路201號東側",
+        "capacity": 90,
+        "rent": 84,
+        "return": 6,
+        "general": 20,
+        "electric": 64,
+        "update": "2026-06-09 19:53:36"
+    },
+    {
+        "uid": "TNN501321061",
+        "name": "長榮女中",
+        "lat": 22.99109,
+        "lon": 120.22115,
+        "address": "長榮路二段135號",
+        "capacity": 19,
+        "rent": 13,
+        "return": 6,
+        "general": 4,
+        "electric": 9,
+        "update": "2026-06-09 19:53:36"
+    }
+];
+  let bestBikeMarker = null;
+  const bikeIcon = L.divIcon({ className: '', html: '<div class="bike-icon">🚲</div>', iconSize: [30,30], iconAnchor: [15,15], popupAnchor: [0,-14] });
+
+  function renderYouBike() {
+    let rentTotal = 0, returnTotal = 0, electricTotal = 0;
+    const sorted = [...youbikeData].sort((a,b)=>b.rent-a.rent);
+    youbikeData.forEach(s => {
+      rentTotal += s.rent; returnTotal += s.return; electricTotal += s.electric;
+      const marker = L.marker([s.lat, s.lon], {icon: bikeIcon}).bindPopup(popup('🚲 ' + s.name, `
+        地址：${s.address}<br>
+        可借車：<b>${s.rent}</b> 輛（一般 ${s.general}／電輔 ${s.electric}）<br>
+        可還空位：<b>${s.return}</b> 格<br>
+        總車柱數：${s.capacity}<br>
+        更新時間：${s.update}<br>
+        資料來源：TDX YouBike API 快照
+      `));
+      marker.station = s;
+      marker.addTo(youbikeLayer);
+      if(!bestBikeMarker || s.rent > bestBikeMarker.station.rent) bestBikeMarker = marker;
+    });
+    document.getElementById('bikeStationCount').innerText = youbikeData.length;
+    document.getElementById('bikeRentTotal').innerText = rentTotal;
+    document.getElementById('bikeReturnTotal').innerText = returnTotal;
+    document.getElementById('bikeElectricTotal').innerText = electricTotal;
+    document.getElementById('bikeList').innerHTML = sorted.slice(0,8).map(s => `<div class="bike-row"><span>${s.name}</span><b>${s.rent} 輛</b></div>`).join('');
+  }
+  renderYouBike();
+
+  function focusBestBikeStation() {
+    if(!map.hasLayer(youbikeLayer)) map.addLayer(youbikeLayer);
+    if(bestBikeMarker) {
+      const s = bestBikeMarker.station;
+      map.setView([s.lat, s.lon], 17);
+      bestBikeMarker.openPopup();
+    }
+  }
+
+  const busData = [
+    {
+        "uid": "THB294936",
+        "name": "臺南火車站(南站)",
+        "lat": 22.996968,
+        "lon": 120.211286,
+        "address": "台南市中西區中山路209號",
+        "bearing": "SE",
+        "arrivals": [
+            {
+                "route": "8050",
+                "subroute": "8050",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "THB295186",
+        "name": "臺南火車站(南站)",
+        "lat": 22.996968,
+        "lon": 120.211286,
+        "address": "台南市中西區中山路209號",
+        "bearing": "SE",
+        "arrivals": [
+            {
+                "route": "8050",
+                "subroute": "8050",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "THB308363",
+        "name": "臺南一中",
+        "lat": 22.99289607,
+        "lon": 120.2178171,
+        "address": "臺南市東區勝利路94號對面",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "8050",
+                "subroute": "8050",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "THB308364",
+        "name": "臺南一中",
+        "lat": 22.99301089,
+        "lon": 120.2179934,
+        "address": "臺南市東區勝利路94號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "8050",
+                "subroute": "8050",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "KHH10023994481",
+        "name": "臺南火車站(成功路)",
+        "lat": 22.997344,
+        "lon": 120.210582,
+        "address": "",
+        "bearing": "E",
+        "arrivals": [
+            {
+                "route": "239",
+                "subroute": "239",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "KHH10023994492",
+        "name": "臺南火車站(成功路)",
+        "lat": 22.997526,
+        "lon": 120.210631,
+        "address": "",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "239",
+                "subroute": "239",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "KHH10804694501",
+        "name": "臺南火車站(成功路)",
+        "lat": 22.997526,
+        "lon": 120.210631,
+        "address": "",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "8046A",
+                "subroute": "8046A",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "KHH10807394502",
+        "name": "臺南火車站(成功路)",
+        "lat": 22.997526,
+        "lon": 120.210631,
+        "address": "",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "8046B(部分繞駛樹人醫專)",
+                "subroute": "8046B(部分繞駛樹人醫專)",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "KHH10807394511",
+        "name": "臺南火車站(成功路)",
+        "lat": 22.997344,
+        "lon": 120.210582,
+        "address": "",
+        "bearing": "E",
+        "arrivals": [
+            {
+                "route": "8046B(部分繞駛樹人醫專)",
+                "subroute": "8046B(部分繞駛樹人醫專)",
+                "eta": null,
+                "status": 3,
+                "label": "末班已過"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10029",
+        "name": "臺南火車站(中山路C)",
+        "lat": 22.99675,
+        "lon": 120.21131,
+        "address": "台南市北區中山路197至207號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "7",
+                "subroute": "7路 公園北路→台糖安南學苑",
+                "eta": 1718,
+                "status": 1,
+                "label": "約 29 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10031",
+        "name": "臺南火車站(中山路D)",
+        "lat": 22.99641,
+        "lon": 120.21113,
+        "address": "台南市北區中山路176至180號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "7",
+                "subroute": "7路 台糖安南學苑→公園北路",
+                "eta": 585,
+                "status": 0,
+                "label": "約 10 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10143",
+        "name": "臺南火車站(中山路D)",
+        "lat": 22.99641,
+        "lon": 120.21113,
+        "address": "台南市北區中山路176至180號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "18",
+                "subroute": "18路 大成國中→和順轉運站",
+                "eta": 1586,
+                "status": 1,
+                "label": "約 26 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10205",
+        "name": "臺南火車站(中山路C)",
+        "lat": 22.99675,
+        "lon": 120.21131,
+        "address": "台南市北區中山路197至207號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "18",
+                "subroute": "18路 和順轉運站→大成國中 [延國民路]",
+                "eta": 922,
+                "status": 0,
+                "label": "約 15 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10378",
+        "name": "勝利北路",
+        "lat": 23.00459,
+        "lon": 120.21882,
+        "address": "台南市北區勝利路224號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 和順轉運站→大甲里",
+                "eta": 4515,
+                "status": 1,
+                "label": "約 75 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10379",
+        "name": "成大醫院(勝利路)",
+        "lat": 23.00247,
+        "lon": 120.21865,
+        "address": "台南市北區勝利路138號成杏校區成功大學",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 和順轉運站→大甲里",
+                "eta": 4537,
+                "status": 1,
+                "label": "約 76 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10381",
+        "name": "小東路",
+        "lat": 23.00131,
+        "lon": 120.21601,
+        "address": "台南市北區小東路機車專用道成功大學",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 和順轉運站→大甲里",
+                "eta": 4665,
+                "status": 1,
+                "label": "約 78 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10382",
+        "name": "臺南公園(北門路)",
+        "lat": 23.00099,
+        "lon": 120.21294,
+        "address": "台南市東區北門路二段28號",
+        "bearing": "S",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 和順轉運站→大甲里",
+                "eta": 4765,
+                "status": 1,
+                "label": "約 79 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10383",
+        "name": "臺南火車站(成功路A)",
+        "lat": 22.99751,
+        "lon": 120.21067,
+        "address": "台南市北區成功路6號",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 和順轉運站→大甲里",
+                "eta": 4833,
+                "status": 1,
+                "label": "約 81 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10426",
+        "name": "臺南火車站(成功路B)",
+        "lat": 22.99741,
+        "lon": 120.21034,
+        "address": "台南市北區成功路1至3號",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 市立醫院→和順轉運站",
+                "eta": 3476,
+                "status": 1,
+                "label": "約 58 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10427",
+        "name": "臺南公園(北門路)",
+        "lat": 23.00069,
+        "lon": 120.21308,
+        "address": "台南市東區北門路二段28號",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 市立醫院→和順轉運站",
+                "eta": 3734,
+                "status": 1,
+                "label": "約 62 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10428",
+        "name": "小東路",
+        "lat": 23.00115,
+        "lon": 120.21568,
+        "address": "台南市北區小東路35號成功大學力行校區成功大學",
+        "bearing": "E",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 市立醫院→和順轉運站",
+                "eta": 3818,
+                "status": 1,
+                "label": "約 64 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10430",
+        "name": "成大醫院(勝利路)",
+        "lat": 23.00281,
+        "lon": 120.21872,
+        "address": "台南市北區勝利路367號成功大學力行校區成功大學",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 市立醫院→和順轉運站",
+                "eta": 3917,
+                "status": 1,
+                "label": "約 65 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10431",
+        "name": "勝利北路",
+        "lat": 23.00477,
+        "lon": 120.21888,
+        "address": "台南市北區勝利路210號",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "5",
+                "subroute": "5路 市立醫院→和順轉運站",
+                "eta": 3965,
+                "status": 1,
+                "label": "約 66 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10457",
+        "name": "東寧社區",
+        "lat": 22.99161,
+        "lon": 120.22302,
+        "address": "台南市東區東寧路81號",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1030,
+                "status": 0,
+                "label": "約 17 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10458",
+        "name": "成功新村",
+        "lat": 22.99224,
+        "lon": 120.21975,
+        "address": "台南市東區東寧路3-13號",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1068,
+                "status": 0,
+                "label": "約 18 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10459",
+        "name": "臺南一中",
+        "lat": 22.99301,
+        "lon": 120.21794,
+        "address": "台南市東區勝利路80號",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1148,
+                "status": 0,
+                "label": "約 19 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10460",
+        "name": "勝利大學路口",
+        "lat": 22.99576,
+        "lon": 120.21822,
+        "address": "台南市東區勝利路116號勝利校區成功大學",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1217,
+                "status": 0,
+                "label": "約 20 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10461",
+        "name": "勝利路",
+        "lat": 22.99792,
+        "lon": 120.21834,
+        "address": "台南市東區勝利路294號成功大學光復校區",
+        "bearing": "N",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1303,
+                "status": 0,
+                "label": "約 22 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10462",
+        "name": "成功大學",
+        "lat": 23.00109,
+        "lon": 120.21812,
+        "address": "台南市北區小東路35號成功大學力行校區",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1361,
+                "status": 0,
+                "label": "約 23 分鐘"
+            }
+        ]
+    },
+    {
+        "uid": "TNN10463",
+        "name": "小東路",
+        "lat": 23.00131,
+        "lon": 120.21601,
+        "address": "台南市北區小東路機車專用道成功大學",
+        "bearing": "W",
+        "arrivals": [
+            {
+                "route": "6",
+                "subroute": "6路 仁德轉運站→龍崗國小",
+                "eta": 1439,
+                "status": 0,
+                "label": "約 24 分鐘"
+            }
+        ]
+    }
+];
+  let soonBusMarker = null;
+  const busIcon = L.divIcon({ className: '', html: '<div class="bus-icon">🚌</div>', iconSize: [30,30], iconAnchor: [15,15], popupAnchor: [0,-14] });
+
+  function formatBusArrivals(arrivals) {
+    if(!arrivals || arrivals.length === 0) return '目前無到站資料';
+    return arrivals.map(a => {
+      const route = a.route || '未知路線';
+      const label = a.label || '無資料';
+      return `🚌 <b>${route}</b>：${label}<br><span style="color:#697386">${a.subroute || ''}</span>`;
+    }).join('<hr style="border:0;border-top:1px solid #dde3ea;margin:6px 0;">');
+  }
+
+  function renderBus() {
+    let routes = new Set();
+    let soonCount = 0;
+    let candidates = [];
+    busData.forEach(s => {
+      (s.arrivals || []).forEach(a => {
+        if(a.route) routes.add(a.route);
+        if(typeof a.eta === 'number' && a.eta <= 1800) soonCount++;
+        if(typeof a.eta === 'number') candidates.push({stop:s, arrival:a});
+      });
+      const marker = L.marker([s.lat, s.lon], {icon: busIcon}).bindPopup(popup('🚌 ' + s.name, `
+        地址：${s.address || '未提供'}<br>
+        方位：${s.bearing || '未提供'}<br>
+        <hr>
+        ${formatBusArrivals(s.arrivals)}<br>
+        <span style="color:#697386">資料來源：TDX Bus NearBy API 快照</span>
+      `));
+      marker.stop = s;
+      marker.addTo(busLayer);
+    });
+
+    candidates.sort((a,b)=>a.arrival.eta-b.arrival.eta);
+    if(candidates.length) {
+      const first = candidates[0].stop;
+      soonBusMarker = [...busLayer.getLayers()].find(m => m.stop && m.stop.uid === first.uid);
+    }
+
+    document.getElementById('busStopCount').innerText = busData.length;
+    document.getElementById('busRouteCount').innerText = routes.size;
+    document.getElementById('busSoonCount').innerText = soonCount;
+    document.getElementById('busDataTime').innerText = busData.reduce((n,s)=>n+(s.arrivals?s.arrivals.length:0),0);
+    document.getElementById('busList').innerHTML = candidates.slice(0,8).map(c => `
+      <div class="bus-row">
+        <span>${c.stop.name}｜${c.arrival.route}路</span>
+        <b>${c.arrival.label}</b>
+      </div>
+    `).join('') || '<div>目前沒有可顯示的到站資料</div>';
+  }
+  renderBus();
+
+  function focusSoonBusStop() {
+    if(!map.hasLayer(busLayer)) map.addLayer(busLayer);
+    if(soonBusMarker) {
+      map.setView([soonBusMarker.stop.lat, soonBusMarker.stop.lon], 17);
+      soonBusMarker.openPopup();
+    }
+  }
+
+  function setMode(mode, btn){
+    document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const names = {campus:'校園導覽', bike:'YouBike 即時站點', bus:'公車到站資訊'};
+    document.getElementById('modeText').innerText = '目前模式：' + names[mode];
+
+    if(mode==='campus'){
+      map.addLayer(arcgisBuildings);
+      map.addLayer(flowerRoutes);
+      map.addLayer(treeLayer);
+      map.removeLayer(youbikeLayer);
+      map.removeLayer(busLayer);
+    }
+
+    if(mode==='bike'){
+      map.addLayer(youbikeLayer);
+      map.setView([22.998,120.220], 15);
+    }
+
+    if(mode==='bus'){
+      map.addLayer(busLayer);
+      map.setView([22.998,120.220], 15);
+    }
+  }
+
+  /*
+    若要改成真正即時串接 TDX：
+    1. 不建議把 Client Secret 寫在前端 HTML。
+    2. 正式版應用後端或雲端函式取得 Access Token。
+    3. 前端再呼叫自己的後端 API，取得 Station/NearBy 與 Availability/NearBy 合併後的資料。
+  */
+
+</script>
+</body>
+</html>
