@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>成功大學光復校區｜3D 建物展示</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.30/"></script>
+
+  <style>
+    :root {
+      --navy: #3e457f;
+      --green: #5b9f7a;
+      --paper: rgba(255, 255, 255, 0.94);
+      --shadow: 0 14px 36px rgba(28, 34, 62, 0.22);
+      --text: #2f3142;
+      --muted: #6b7082;
+    }
+
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
+      color: var(--text);
+    }
+
+    .info-panel {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      width: 285px;
+      z-index: 99;
+      border-radius: 20px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .panel-header {
+      padding: 18px 20px 14px;
+      color: white;
+      background: linear-gradient(135deg, var(--navy), #6670b7);
+    }
+
+    .panel-kicker {
+      display: inline-block;
+      margin-bottom: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.18);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+
+    .panel-header h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.35;
+      letter-spacing: 0.02em;
+    }
+
+    .panel-body {
+      padding: 14px 20px 16px;
+      line-height: 1.65;
+    }
+
+    .panel-body p {
+      margin: 0 0 12px;
+      font-size: 15px;
+    }
+
+    .tips {
+      margin-top: 12px;
+      padding: 13px 14px;
+      border-radius: 14px;
+      background: rgba(62,69,127,0.08);
+      color: #4b4f68;
+      font-size: 13px;
+    }
+
+    .tips b {
+      color: var(--navy);
+    }
+
+    .note {
+      margin-top: 12px;
+      padding-left: 10px;
+      border-left: 3px solid var(--green);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .panel-button {
+      flex: 1;
+      padding: 9px 10px;
+      border-radius: 999px;
+      border: 0;
+      color: white;
+      background: var(--navy);
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    .panel-button.secondary {
+      background: var(--green);
+    }
+
+    .esri-layer-list {
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(28,34,62,0.16);
+    }
+
+    .esri-widget {
+      font-family: "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
+    }
+
+    @media (max-width: 720px) {
+      .info-panel {
+        left: 14px;
+        right: 14px;
+        top: 14px;
+        width: auto;
+      }
+
+      .panel-header h1 {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="viewDiv"></div>
+
+  <section class="info-panel">
+    <div class="panel-header">
+      <div class="panel-kicker">NCKU GUANGFU CAMPUS</div>
+      <h1>Campus 3D Viewer</h1><div style="margin-top:6px;font-size:13px;opacity:.9;">成功大學光復校區三維建物模型</div>
+    </div>
+
+    <div class="panel-body">
+      <p>展示光復校區主要建物三維模型，可自由旋轉、縮放與瀏覽。</p>
+
+      <div class="tips">
+        <b>操作：</b>滑鼠左鍵拖曳平移，右鍵拖曳旋轉，滾輪縮放；或按住 Ctrl + 拖曳調整視角。
+      </div>
+
+      <div class="button-row">
+        <button class="panel-button" id="flyButton">飛到光復校區</button>
+        <button class="panel-button secondary" id="tiltButton">傾斜視角</button>
+      </div>
+
+      <div class="note">建議使用全螢幕模式觀看。</div>
+    </div>
+  </section>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/SceneView",
+      "esri/layers/SceneLayer",
+      "esri/widgets/LayerList",
+      "esri/widgets/Fullscreen",
+      "esri/widgets/Home",
+      "esri/widgets/ScaleBar"
+    ], function(
+      Map,
+      SceneView,
+      SceneLayer,
+      LayerList,
+      Fullscreen,
+      Home,
+      ScaleBar
+    ) {
+
+      const building3DLayer = new SceneLayer({
+        url: "https://services5.arcgis.com/yqmzFsAzBUNEIWLw/arcgis/rest/services/%E5%85%89%E5%BE%A9%E6%B8%AC%E5%8D%80%E5%BB%BA%E7%89%A93D_2/SceneServer",
+        title: "光復校區 3D 建物",
+        popupEnabled: true,
+        elevationInfo: {
+          mode: "absolute-height"
+        }
+      });
+
+      const map = new Map({
+        basemap: "gray-vector",
+        ground: "world-elevation",
+        layers: [building3DLayer]
+      });
+
+      const view = new SceneView({
+        container: "viewDiv",
+        map: map,
+        viewingMode: "global",
+        qualityProfile: "high",
+        camera: {
+          position: {
+            longitude: 120.219,
+            latitude: 22.997,
+            z: 520
+          },
+          tilt: 62,
+          heading: 325
+        },
+        environment: {
+          atmosphereEnabled: true,
+          starsEnabled: false,
+          lighting: {
+            type: "sun",
+            directShadowsEnabled: true
+          }
+        }
+      });
+
+      view.ui.add(new Home({ view: view }), "top-left");
+      view.ui.add(new Fullscreen({ view: view }), "top-left");
+      view.ui.add(new LayerList({ view: view }), "top-right");
+      view.ui.add(new ScaleBar({ view: view, unit: "metric" }), "bottom-right");
+
+      building3DLayer.when(function() {
+        view.goTo(building3DLayer.fullExtent).catch(function(error) {
+          console.warn("Layer extent goTo failed:", error);
+        });
+      }).catch(function(error) {
+        console.error("Scene layer failed to load:", error);
+      });
+
+      document.getElementById("flyButton").addEventListener("click", function() {
+        view.goTo({
+          position: {
+            longitude: 120.219,
+            latitude: 22.997,
+            z: 520
+          },
+          tilt: 62,
+          heading: 325
+        }, {
+          duration: 1600
+        });
+      });
+
+      document.getElementById("tiltButton").addEventListener("click", function() {
+        view.goTo({
+          tilt: 70,
+          heading: view.camera.heading + 35
+        }, {
+          duration: 1000
+        });
+      });
+    });
+  </script>
+</body>
+</html>
